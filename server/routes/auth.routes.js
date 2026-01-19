@@ -15,6 +15,76 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+// @route   POST /api/auth/verify-captcha
+// @desc    Verify Cloudflare Turnstile CAPTCHA token
+// @access  Public
+router.post('/verify-captcha', async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'CAPTCHA token is required' });
+    }
+
+    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+
+    if (!secretKey) {
+      console.warn('⚠️ TURNSTILE_SECRET_KEY not configured. Skipping CAPTCHA verification.');
+      return res.json({ success: true, message: 'CAPTCHA verification skipped (not configured)' });
+    }
+
+    // Verify token with Cloudflare with timeout
+    const verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+    try {
+      const verifyResponse = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secret: secretKey,
+          response: token,
+        }),
+        signal: controller.signal
+      });
+
+      const verifyData = await verifyResponse.json();
+
+      if (verifyData.success) {
+        res.json({ success: true, message: 'CAPTCHA verified successfully' });
+      } else {
+        res.status(400).json({
+          success: false,
+          message: 'CAPTCHA verification failed',
+          errors: verifyData['error-codes']
+        });
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️ CAPTCHA network error. Allowing in development mode.');
+        return res.json({ success: true, message: 'CAPTCHA verified (dev mode fallback)' });
+      }
+      res.status(500).json({ success: false, message: 'Network error verifying CAPTCHA' });
+    }
+  } catch (error) {
+
+    console.error('CAPTCHA verification error:', error.message);
+
+    // Fallback for development
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ CAPTCHA verification error. Allowing in development mode.');
+      return res.json({ success: true, message: 'CAPTCHA verified (dev mode fallback)' });
+    }
+
+    res.status(500).json({ success: false, message: 'CAPTCHA verification failed' });
+  }
+});
+
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public

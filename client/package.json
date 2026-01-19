@@ -8,6 +8,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.4.1",
     "@react-three/drei": "^9.88.13",
     "@react-three/fiber": "^8.15.11",
     "axios": "^1.6.2",
@@ -33,4 +34,3 @@
     "vite": "^5.0.8"
   }
 }
-

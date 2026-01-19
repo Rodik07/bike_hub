@@ -62,13 +62,32 @@ const userSchema = new mongoose.Schema({
   },
   resetPasswordExpiry: {
     type: Date
+  },
+  // OTP fields for 2FA
+  otpCode: {
+    type: String
+  },
+  otpExpiry: {
+    type: Date
+  },
+  otpAttempts: {
+    type: Number,
+    default: 0
+  },
+  // Rate limiting fields
+  loginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockUntil: {
+    type: Date
   }
 }, {
   timestamps: true
 });
 
 // Hash password before saving (only if password is provided)
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) {
     return next();
   }
@@ -77,7 +96,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

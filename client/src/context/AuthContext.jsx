@@ -50,15 +50,15 @@ export const AuthProvider = ({ children }) => {
     console.log('🔐 [AuthContext] Attempting login for:', email);
     try {
       const { data } = await axios.post('/api/auth/login', { email, password });
-      console.log('✅ [AuthContext] Login successful:', {
-        userId: data._id,
+      console.log('✅ [AuthContext] Login step 1 successful - OTP sent');
+
+      // Login now returns OTP sent status instead of token
+      return {
+        success: true,
+        otpSent: data.otpSent,
         email: data.email,
-        role: data.role
-      });
-      localStorage.setItem('token', data.token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      setUser(data);
-      return { success: true };
+        expiresIn: data.expiresIn
+      };
     } catch (error) {
       console.error('❌ [AuthContext] Login failed:', {
         message: error.message,
@@ -68,6 +68,51 @@ export const AuthProvider = ({ children }) => {
       return {
         success: false,
         message: error.response?.data?.message || 'Login failed'
+      };
+    }
+  };
+
+  const verifyOTP = async (email, otp) => {
+    console.log('🔐 [AuthContext] Verifying OTP for:', email);
+    try {
+      const { data } = await axios.post('/api/auth/verify-otp', { email, otp });
+      console.log('✅ [AuthContext] OTP verification successful:', {
+        userId: data._id,
+        email: data.email,
+        role: data.role
+      });
+      localStorage.setItem('token', data.token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+      setUser(data);
+      return { success: true, user: data };
+    } catch (error) {
+      console.error('❌ [AuthContext] OTP verification failed:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      return {
+        success: false,
+        message: error.response?.data?.message || 'OTP verification failed'
+      };
+    }
+  };
+
+  const resendOTP = async (email) => {
+    console.log('🔐 [AuthContext] Resending OTP for:', email);
+    try {
+      const { data } = await axios.post('/api/auth/resend-otp', { email });
+      console.log('✅ [AuthContext] OTP resent successfully');
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('❌ [AuthContext] Resend OTP failed:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to resend OTP'
       };
     }
   };
@@ -100,7 +145,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, setUserFromToken, fetchUser }}>
+    <AuthContext.Provider value={{ user, login, verifyOTP, resendOTP, register, logout, loading, setUserFromToken, fetchUser }}>
       {children}
     </AuthContext.Provider>
   );

@@ -5,14 +5,20 @@ import User from '../models/User.model.js';
 import { generateToken } from '../utils/generateToken.js';
 import { protect } from '../middleware/auth.middleware.js';
 import crypto from 'crypto';
-import { sendPasswordResetEmail } from '../utils/emailService.js';
+import { sendPasswordResetEmail, sendOTPEmail } from '../utils/emailService.js';
+import { strictAuthLimiter, moderateAuthLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
+
+// Helper function to generate 6-digit OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', [
+router.post('/register', strictAuthLimiter, [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
@@ -56,9 +62,9 @@ router.post('/register', [
 });
 
 // @route   POST /api/auth/login
-// @desc    Login user
+// @desc    Login user - Step 1: Verify credentials and send OTP
 // @access  Public
-router.post('/login', [
+router.post('/login', strictAuthLimiter, [
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
@@ -75,15 +81,131 @@ router.post('/login', [
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockUntil - new Date()) / 60000);
+      return res.status(423).json({
+        message: `Account temporarily locked. Please try again in ${minutesLeft} minute(s).`,
+        lockUntil: user.lockUntil
+      });
+    }
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      // Increment login attempts
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+
+      // Lock account after 5 failed attempts for 30 minutes
+      if (user.loginAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        await user.save();
+        return res.status(423).json({
+          message: 'Too many failed login attempts. Account locked for 30 minutes.',
+          lockUntil: user.lockUntil
+        });
+      }
+
+      await user.save();
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Reset login attempts on successful password verification
+    user.loginAttempts = 0;
+    user.lockUntil = undefined;
+
+    // Generate 6-digit OTP
+    const otpCode = generateOTP();
+    const otpExpiry = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+
+    // Save OTP to user
+    user.otpCode = otpCode;
+    user.otpExpiry = otpExpiry;
+    user.otpAttempts = 0;
+    await user.save();
+
+    // Send OTP email
+    await sendOTPEmail(user.email, user.name, otpCode);
+
+    res.json({
+      message: 'OTP sent to your email. Please verify to complete login.',
+      email: user.email,
+      otpSent: true,
+      expiresIn: 180 // 3 minutes in seconds
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   POST /api/auth/verify-otp
+// @desc    Verify OTP - Step 2: Complete login with OTP
+// @access  Public
+router.post('/verify-otp', strictAuthLimiter, [
+  body('email').isEmail().withMessage('Please provide a valid email'),
+  body('otp').notEmpty().withMessage('OTP is required').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid verification attempt' });
+    }
+
+    // Check if OTP exists
+    if (!user.otpCode || !user.otpExpiry) {
+      return res.status(400).json({ message: 'No OTP found. Please login again.' });
+    }
+
+    // Check if OTP has expired
+    if (user.otpExpiry < new Date()) {
+      user.otpCode = undefined;
+      user.otpExpiry = undefined;
+      user.otpAttempts = 0;
+      await user.save();
+      return res.status(400).json({ message: 'OTP has expired. Please login again.' });
+    }
+
+    // Verify OTP
+    if (user.otpCode !== otp) {
+      // Increment OTP attempts
+      user.otpAttempts = (user.otpAttempts || 0) + 1;
+
+      // Lock account after 5 failed OTP attempts for 30 minutes
+      if (user.otpAttempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+        user.otpCode = undefined;
+        user.otpExpiry = undefined;
+        user.otpAttempts = 0;
+        await user.save();
+        return res.status(423).json({
+          message: 'Too many failed OTP attempts. Account locked for 30 minutes.',
+          lockUntil: user.lockUntil
+        });
+      }
+
+      await user.save();
+      return res.status(401).json({
+        message: 'Invalid OTP. Please try again.',
+        attemptsRemaining: 5 - user.otpAttempts
+      });
+    }
+
+    // OTP is valid - clear OTP fields and complete login
+    user.otpCode = undefined;
+    user.otpExpiry = undefined;
+    user.otpAttempts = 0;
+    await user.save();
+
     // Check if password change is required
-    const mustChangePassword = user.mustChangePassword || 
+    const mustChangePassword = user.mustChangePassword ||
       (user.temporaryPasswordExpiry && new Date() > user.temporaryPasswordExpiry);
-    
+
     res.json({
       _id: user._id,
       name: user.name,
@@ -98,17 +220,68 @@ router.post('/login', [
   }
 });
 
+// @route   POST /api/auth/resend-otp
+// @desc    Resend OTP
+// @access  Public
+router.post('/resend-otp', moderateAuthLimiter, [
+  body('email').isEmail().withMessage('Please provide a valid email')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if user exists
+      return res.json({ message: 'If the email exists, a new OTP has been sent.' });
+    }
+
+    // Check if account is locked
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockUntil - new Date()) / 60000);
+      return res.status(423).json({
+        message: `Account temporarily locked. Please try again in ${minutesLeft} minute(s).`,
+        lockUntil: user.lockUntil
+      });
+    }
+
+    // Generate new OTP
+    const otpCode = generateOTP();
+    const otpExpiry = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+
+    // Save new OTP
+    user.otpCode = otpCode;
+    user.otpExpiry = otpExpiry;
+    user.otpAttempts = 0;
+    await user.save();
+
+    // Send OTP email
+    await sendOTPEmail(user.email, user.name, otpCode);
+
+    res.json({
+      message: 'A new OTP has been sent to your email.',
+      expiresIn: 180 // 3 minutes in seconds
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // @route   GET /api/auth/me
 // @desc    Get current user
 // @access  Private
 router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password -temporaryPassword');
-    
+
     // Check if password change is required
-    const mustChangePassword = user.mustChangePassword || 
+    const mustChangePassword = user.mustChangePassword ||
       (user.temporaryPasswordExpiry && new Date() > user.temporaryPasswordExpiry);
-    
+
     res.json({
       ...user.toObject(),
       mustChangePassword
@@ -163,7 +336,7 @@ router.put('/change-password', protect, [
 // @route   POST /api/auth/forgot-password
 // @desc    Send password reset email
 // @access  Public
-router.post('/forgot-password', [
+router.post('/forgot-password', moderateAuthLimiter, [
   body('email').isEmail().withMessage('Please provide a valid email')
 ], async (req, res) => {
   try {
@@ -202,7 +375,7 @@ router.post('/forgot-password', [
 // @route   POST /api/auth/reset-password
 // @desc    Reset password with token
 // @access  Public
-router.post('/reset-password', [
+router.post('/reset-password', moderateAuthLimiter, [
   body('token').notEmpty().withMessage('Reset token is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
@@ -280,10 +453,24 @@ router.get(
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         return res.redirect(`${frontendUrl}/login?error=oauth_failed`);
       }
-      const token = generateToken(req.user._id);
-      // Redirect to frontend with token
+
+      // Generate 6-digit OTP for OAuth login (2FA)
+      const otpCode = generateOTP();
+      const otpExpiry = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+
+      // Save OTP to user
+      const user = await User.findById(req.user._id);
+      user.otpCode = otpCode;
+      user.otpExpiry = otpExpiry;
+      user.otpAttempts = 0;
+      await user.save();
+
+      // Send OTP email
+      await sendOTPEmail(user.email, user.name, otpCode);
+
+      // Redirect to frontend with OAuth flag and email (no token yet)
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      res.redirect(`${frontendUrl}/auth/callback?token=${token}&name=${encodeURIComponent(req.user.name)}&email=${encodeURIComponent(req.user.email)}`);
+      res.redirect(`${frontendUrl}/auth/callback?otpRequired=true&email=${encodeURIComponent(req.user.email)}&name=${encodeURIComponent(req.user.name)}&provider=google`);
     } catch (error) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       res.redirect(`${frontendUrl}/login?error=oauth_error`);

@@ -1,16 +1,25 @@
-import { useEffect, useContext } from 'react';
+import { useEffect, useContext, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
+import OTPVerification from '../components/OTPVerification';
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setUserFromToken } = useContext(AuthContext);
+  const { setUserFromToken, verifyOTP, resendOTP } = useContext(AuthContext);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const [userName, setUserName] = useState('');
+
   const token = searchParams.get('token');
   const error = searchParams.get('error');
+  const otpRequired = searchParams.get('otpRequired');
+  const email = searchParams.get('email');
+  const name = searchParams.get('name');
+  const provider = searchParams.get('provider');
 
   useEffect(() => {
     const handleOAuthCallback = async () => {
@@ -19,18 +28,28 @@ const OAuthCallback = () => {
         navigate('/login');
         return;
       }
-      
+
       if (error) {
         toast.error('OAuth authentication failed. Please try again.');
         navigate('/login');
         return;
       }
 
+      // Check if OTP is required (2FA for OAuth)
+      if (otpRequired === 'true' && email) {
+        setOtpEmail(email);
+        setUserName(name || '');
+        setShowOTPModal(true);
+        toast.success(`Verification code sent to ${email}`);
+        return;
+      }
+
+      // Legacy flow - direct token (fallback, shouldn't happen with 2FA enabled)
       if (token) {
         try {
           // Store token in localStorage
           localStorage.setItem('token', token);
-          
+
           // Fetch user data
           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
           const response = await fetch(`${apiUrl}/api/auth/me`, {
@@ -52,14 +71,42 @@ const OAuthCallback = () => {
           toast.error('Failed to complete authentication. Please try again.');
           navigate('/login');
         }
-      } else {
+      } else if (!otpRequired) {
         toast.error('No authentication token received.');
         navigate('/login');
       }
     };
 
     handleOAuthCallback();
-  }, [token, error, navigate, setUserFromToken]);
+  }, [token, error, otpRequired, email, name, navigate, setUserFromToken]);
+
+  const handleVerifyOTP = async (otp) => {
+    const result = await verifyOTP(otpEmail, otp);
+
+    if (result.success) {
+      setShowOTPModal(false);
+      toast.success(`Login successful via ${provider || 'OAuth'}!`);
+      navigate('/');
+    } else {
+      throw new Error(result.message);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    const result = await resendOTP(otpEmail);
+
+    if (result.success) {
+      toast.success('New verification code sent!');
+    } else {
+      throw new Error(result.message);
+    }
+  };
+
+  const handleCancelOTP = () => {
+    setShowOTPModal(false);
+    toast('OAuth login cancelled.', { icon: 'ℹ️' });
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-50">
@@ -70,6 +117,13 @@ const OAuthCallback = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Failed</h2>
             <p className="text-gray-600">Redirecting to login...</p>
           </>
+        ) : showOTPModal ? (
+          <OTPVerification
+            email={otpEmail}
+            onVerify={handleVerifyOTP}
+            onResend={handleResendOTP}
+            onCancel={handleCancelOTP}
+          />
         ) : token ? (
           <>
             <LoadingSpinner size={200} text="Completing Sign In..." />
@@ -78,8 +132,9 @@ const OAuthCallback = () => {
           </>
         ) : (
           <>
-            <FaCheckCircle className="text-6xl text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Redirecting...</h2>
+            <LoadingSpinner size={200} text="Processing OAuth..." />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 mt-4">Processing...</h2>
+            <p className="text-gray-600">Please wait</p>
           </>
         )}
       </div>
@@ -88,4 +143,3 @@ const OAuthCallback = () => {
 };
 
 export default OAuthCallback;
-

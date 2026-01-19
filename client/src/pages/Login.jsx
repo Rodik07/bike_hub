@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { motion, useInView } from 'framer-motion';
 import { FaSignInAlt, FaEnvelope, FaLock, FaMotorcycle, FaGoogle, FaEye, FaEyeSlash } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
+import OTPVerification from '../components/OTPVerification';
 import { fadeInUp, scaleIn } from '../utils/animations';
 
 const Login = () => {
@@ -15,7 +16,9 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useContext(AuthContext);
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otpEmail, setOtpEmail] = useState('');
+  const { login, verifyOTP, resendOTP } = useContext(AuthContext);
   const navigate = useNavigate();
 
   // Check for error in URL parameters
@@ -44,14 +47,44 @@ const Login = () => {
 
     const result = await login(formData.email, formData.password);
 
-    if (result.success) {
-      toast.success('Login successful!');
-      navigate('/');
-    } else {
+    if (result.success && result.otpSent) {
+      // Show OTP modal
+      setOtpEmail(result.email);
+      setShowOTPModal(true);
+      toast.success('Verification code sent to your email!');
+    } else if (!result.success) {
       toast.error(result.message);
     }
 
     setLoading(false);
+  };
+
+  const handleVerifyOTP = async (otp) => {
+    const result = await verifyOTP(otpEmail, otp);
+
+    if (result.success) {
+      setShowOTPModal(false);
+      toast.success('Login successful!');
+      navigate('/');
+    } else {
+      throw new Error(result.message);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    const result = await resendOTP(otpEmail);
+
+    if (result.success) {
+      toast.success('New verification code sent!');
+    } else {
+      throw new Error(result.message);
+    }
+  };
+
+  const handleCancelOTP = () => {
+    setShowOTPModal(false);
+    setOtpEmail('');
+    toast('Login cancelled. Try again with different credentials.', { icon: 'ℹ️' });
   };
 
   const handleGoogleLogin = () => {
@@ -237,6 +270,16 @@ const Login = () => {
           </motion.div>
         </motion.form>
       </motion.div>
+
+      {/* OTP Verification Modal */}
+      {showOTPModal && (
+        <OTPVerification
+          email={otpEmail}
+          onVerify={handleVerifyOTP}
+          onResend={handleResendOTP}
+          onCancel={handleCancelOTP}
+        />
+      )}
     </div>
   );
 };

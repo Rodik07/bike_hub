@@ -1,16 +1,17 @@
 import express from 'express';
 import Inquiry from '../models/Inquiry.model.js';
 import { protect } from '../middleware/auth.middleware.js';
+import { moderateAuthLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
 // @route   POST /api/inquiries
 // @desc    Create inquiry
 // @access  Private
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, moderateAuthLimiter, async (req, res) => {
   try {
     const { bike, dealer, subject, message } = req.body;
-    
+
     const inquiry = await Inquiry.create({
       user: req.user._id,
       bike,
@@ -18,12 +19,12 @@ router.post('/', protect, async (req, res) => {
       subject,
       message
     });
-    
+
     const populatedInquiry = await Inquiry.findById(inquiry._id)
       .populate('bike', 'name brand')
       .populate('dealer', 'name')
       .populate('user', 'name email');
-    
+
     res.status(201).json(populatedInquiry);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -36,7 +37,7 @@ router.post('/', protect, async (req, res) => {
 router.get('/', protect, async (req, res) => {
   try {
     let query = {};
-    
+
     if (req.user.role === 'dealer' || req.user.role === 'admin') {
       // Dealers see inquiries for their dealership
       const Dealer = (await import('../models/Dealer.model.js')).default;
@@ -48,13 +49,13 @@ router.get('/', protect, async (req, res) => {
       // Users see their own inquiries
       query.user = req.user._id;
     }
-    
+
     const inquiries = await Inquiry.find(query)
       .populate('bike', 'name brand images')
       .populate('dealer', 'name')
       .populate('user', 'name email')
       .sort({ createdAt: -1 });
-    
+
     res.json(inquiries);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -69,28 +70,28 @@ router.put('/:id/reply', protect, async (req, res) => {
     if (req.user.role !== 'dealer' && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Dealer or Admin access required' });
     }
-    
+
     const { message } = req.body;
-    
+
     const inquiry = await Inquiry.findById(req.params.id);
-    
+
     if (!inquiry) {
       return res.status(404).json({ message: 'Inquiry not found' });
     }
-    
+
     inquiry.status = 'replied';
     inquiry.dealerReply = {
       message,
       repliedAt: new Date()
     };
-    
+
     await inquiry.save();
-    
+
     const populatedInquiry = await Inquiry.findById(inquiry._id)
       .populate('bike')
       .populate('dealer')
       .populate('user');
-    
+
     res.json(populatedInquiry);
   } catch (error) {
     res.status(500).json({ message: error.message });

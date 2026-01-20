@@ -7,6 +7,7 @@ import { motion, useInView } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
 import BikeView360 from '../components/BikeView360';
 import EMICalculator from '../components/EMICalculator';
+import ExhaustSoundPlayer from '../components/ExhaustSoundPlayer';
 import LoadingSpinner from '../components/LoadingSpinner';
 import TestRideBookingModal from '../components/TestRideBookingModal';
 import {
@@ -334,6 +335,18 @@ const BikeDetail = () => {
             )}
           </motion.div>
         </div>
+
+        {/* Exhaust Sound Player */}
+        {bike.exhaustSound && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mb-8"
+          >
+            <ExhaustSoundPlayer soundUrl={bike.exhaustSound} bikeName={bike.name} />
+          </motion.div>
+        )}
 
         {/* 360° View */}
         {show360 && (() => {

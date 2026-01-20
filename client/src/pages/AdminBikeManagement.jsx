@@ -24,7 +24,8 @@ import {
   FaRuler,
   FaStopCircle,
   FaPalette,
-  FaCheckCircle
+  FaCheckCircle,
+  FaVolumeUp
 } from 'react-icons/fa';
 
 const AdminBikeManagement = () => {
@@ -36,6 +37,8 @@ const AdminBikeManagement = () => {
   const [imagePreviews, setImagePreviews] = useState([]);
   const [model3DFile, setModel3DFile] = useState(null);
   const [model3DPreview, setModel3DPreview] = useState(null);
+  const [exhaustSoundFile, setExhaustSoundFile] = useState(null);
+  const [exhaustSoundPreview, setExhaustSoundPreview] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -203,6 +206,11 @@ const AdminBikeManagement = () => {
     // Append 3D model if selected
     if (model3DFile) {
       formDataToSend.append('model360', model3DFile);
+    }
+
+    // Append exhaust sound if selected
+    if (exhaustSoundFile) {
+      formDataToSend.append('exhaustSound', exhaustSoundFile);
     }
 
     try {
@@ -670,6 +678,71 @@ const AdminBikeManagement = () => {
                             onClick={() => {
                               setModel3DFile(null);
                               setModel3DPreview(null);
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <FaTrashAlt />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Exhaust Sound Upload Section */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2 flex items-center space-x-2">
+                      <FaVolumeUp className="text-primary-600" />
+                      <span>Exhaust Sound (Optional - MP3/WAV)</span>
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                      <input
+                        type="file"
+                        accept=".mp3,.wav,audio/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const validTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3'];
+                            if (!validTypes.includes(file.type) && !file.name.match(/\.(mp3|wav)$/i)) {
+                              toast.error('Please upload an MP3 or WAV file');
+                              return;
+                            }
+                            if (file.size > 10 * 1024 * 1024) {
+                              toast.error('Audio file size should be less than 10MB');
+                              return;
+                            }
+                            setExhaustSoundFile(file);
+                            setExhaustSoundPreview(file.name);
+                          }
+                        }}
+                        className="hidden"
+                        id="exhaust-sound-upload"
+                      />
+                      <label
+                        htmlFor="exhaust-sound-upload"
+                        className="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 p-4 rounded-lg transition-colors"
+                      >
+                        <FaVolumeUp className="text-3xl text-gray-400 mb-2" />
+                        <span className="text-sm text-gray-600 font-medium">
+                          Click to upload exhaust sound
+                        </span>
+                        <span className="text-xs text-gray-500 mt-1">
+                          MP3 or WAV format (max 10MB)
+                        </span>
+                      </label>
+
+                      {exhaustSoundPreview && (
+                        <div className="mt-4 flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <FaVolumeUp className="text-primary-600" />
+                            <span className="text-sm font-medium text-gray-700">
+                              {exhaustSoundPreview}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExhaustSoundFile(null);
+                              setExhaustSoundPreview(null);
                             }}
                             className="text-red-500 hover:text-red-700"
                           >

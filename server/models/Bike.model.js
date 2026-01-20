@@ -74,6 +74,10 @@ const bikeSchema = new mongoose.Schema({
     type: String, // Path to 360° model file (GLB/GLTF or image sequence)
     default: null
   },
+  exhaustSound: {
+    type: String, // URL to exhaust sound audio file (MP3/WAV)
+    default: null
+  },
   isAvailable: {
     type: Boolean,
     default: true

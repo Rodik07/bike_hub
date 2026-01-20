@@ -63,16 +63,18 @@ router.post('/verify-captcha', async (req, res) => {
           errors: verifyData['error-codes']
         });
       }
-    } catch (error) {
+    } catch (fetchError) {
       clearTimeout(timeoutId);
+
+      // In development, allow CAPTCHA to pass if Cloudflare is unreachable
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ CAPTCHA network error. Allowing in development mode.');
         return res.json({ success: true, message: 'CAPTCHA verified (dev mode fallback)' });
       }
+
       res.status(500).json({ success: false, message: 'Network error verifying CAPTCHA' });
     }
   } catch (error) {
-
     console.error('CAPTCHA verification error:', error.message);
 
     // Fallback for development

@@ -76,6 +76,15 @@ const fileFilter = (req, file, cb) => {
       return cb(null, true);
     }
     cb(new Error('Only GLB or GLTF files are allowed for 3D models'), false);
+  }
+  // Validate audio files for exhaust sound
+  else if (file.fieldname === 'exhaustSound') {
+    const audioMimeTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav'];
+    const audioExtensions = ['.mp3', '.wav'];
+    if (audioMimeTypes.includes(file.mimetype) || audioExtensions.includes(fileExtension)) {
+      return cb(null, true);
+    }
+    cb(new Error('Only MP3 or WAV files are allowed for exhaust sound'), false);
   } else {
     // Reject unknown fields
     cb(new Error('Unexpected field upload'), false);
@@ -180,7 +189,8 @@ router.get('/stats', async (req, res) => {
 // @access  Private/Admin
 router.post('/bikes', upload.fields([
   { name: 'images', maxCount: 10 },
-  { name: 'model360', maxCount: 1 }
+  { name: 'model360', maxCount: 1 },
+  { name: 'exhaustSound', maxCount: 1 }
 ]), validateBike, checkValidation, async (req, res) => {
   try {
     const bikeData = { ...req.body };
@@ -214,6 +224,11 @@ router.post('/bikes', upload.fields([
       bikeData.model360 = `/uploads/${req.files.model360[0].filename}`;
     }
 
+    // Add exhaust sound if uploaded
+    if (req.files && req.files.exhaustSound && req.files.exhaustSound.length > 0) {
+      bikeData.exhaustSound = `/uploads/${req.files.exhaustSound[0].filename}`;
+    }
+
     const bike = await Bike.create(bikeData);
     res.status(201).json(bike);
   } catch (error) {
@@ -227,7 +242,8 @@ router.post('/bikes', upload.fields([
 // @access  Private/Admin
 router.put('/bikes/:id', upload.fields([
   { name: 'images', maxCount: 10 },
-  { name: 'model360', maxCount: 1 }
+  { name: 'model360', maxCount: 1 },
+  { name: 'exhaustSound', maxCount: 1 }
 ]), validateBike, checkValidation, async (req, res) => {
   try {
     const bikeData = { ...req.body };
@@ -259,6 +275,11 @@ router.put('/bikes/:id', upload.fields([
     // Handle 3D model
     if (req.files && req.files.model360 && req.files.model360.length > 0) {
       bikeData.model360 = `/uploads/${req.files.model360[0].filename}`;
+    }
+
+    // Handle exhaust sound
+    if (req.files && req.files.exhaustSound && req.files.exhaustSound.length > 0) {
+      bikeData.exhaustSound = `/uploads/${req.files.exhaustSound[0].filename}`;
     }
 
     const bike = await Bike.findByIdAndUpdate(

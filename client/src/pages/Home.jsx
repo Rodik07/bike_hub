@@ -566,7 +566,7 @@ const Home = () => {
       )}
 
       {/* Upcoming Bikes - Animated Cards */}
-      {latestBikes.length > 0 && (
+      {latestBikes.filter(bike => bike.isAvailable === false).length > 0 && (
         <motion.section
           initial="initial"
           whileInView="animate"
@@ -590,7 +590,7 @@ const Home = () => {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {latestBikes.slice(0, 8).map((bike, index) => (
+                {latestBikes.filter(bike => bike.isAvailable === false).slice(0, 6).map((bike, index) => (
                   <motion.div
                     key={bike._id}
                     variants={fadeInUp}

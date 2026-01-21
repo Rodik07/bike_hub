@@ -93,9 +93,6 @@ router.get('/:id', protect, async (req, res) => {
   }
 });
 
-// @route   PUT /api/bookings/:id/approve
-// @desc    Approve booking (Dealer/Admin)
-// @access  Private/Dealer/Admin
 router.put('/:id/approve', protect, async (req, res) => {
   try {
     if (req.user.role !== 'dealer' && req.user.role !== 'admin') {
@@ -106,6 +103,15 @@ router.put('/:id/approve', protect, async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // IDOR Protection: Verify dealer owns this booking
+    if (req.user.role === 'dealer') {
+      const Dealer = (await import('../models/Dealer.model.js')).default;
+      const dealer = await Dealer.findOne({ email: req.user.email });
+      if (!dealer || booking.dealer.toString() !== dealer._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to approve this booking' });
+      }
     }
 
     booking.status = 'approved';
@@ -154,9 +160,6 @@ router.put('/:id/reject', protect, async (req, res) => {
   }
 });
 
-// @route   PUT /api/bookings/:id/reschedule
-// @desc    Reschedule booking (Dealer/Admin)
-// @access  Private/Dealer/Admin
 router.put('/:id/reschedule', protect, async (req, res) => {
   try {
     if (req.user.role !== 'dealer' && req.user.role !== 'admin') {
@@ -169,6 +172,15 @@ router.put('/:id/reschedule', protect, async (req, res) => {
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // IDOR Protection: Verify dealer owns this booking
+    if (req.user.role === 'dealer') {
+      const Dealer = (await import('../models/Dealer.model.js')).default;
+      const dealer = await Dealer.findOne({ email: req.user.email });
+      if (!dealer || booking.dealer.toString() !== dealer._id.toString()) {
+        return res.status(403).json({ message: 'Not authorized to reschedule this booking' });
+      }
     }
 
     booking.status = 'rescheduled';

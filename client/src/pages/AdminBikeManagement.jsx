@@ -500,7 +500,7 @@ const AdminBikeManagement = () => {
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="e.g., KTM Duke 390"
                       />
                     </div>
@@ -514,7 +514,7 @@ const AdminBikeManagement = () => {
                         required
                         value={formData.brand}
                         onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="e.g., KTM, Honda, Yamaha"
                       />
                     </div>
@@ -529,7 +529,8 @@ const AdminBikeManagement = () => {
                         required
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                        style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
                       >
                         <option value="">Select Category</option>
                         <option value="Sports">Sports</option>
@@ -551,7 +552,7 @@ const AdminBikeManagement = () => {
                         required
                         value={formData.price}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -565,7 +566,7 @@ const AdminBikeManagement = () => {
                       required
                       value={formData.exShowroomPrice}
                       onChange={(e) => setFormData({ ...formData, exShowroomPrice: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -578,7 +579,7 @@ const AdminBikeManagement = () => {
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="Enter bike description..."
                     />
                   </div>
@@ -753,17 +754,35 @@ const AdminBikeManagement = () => {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="flex items-center space-x-2">
+                  {/* Checkboxes */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
                       <input
                         type="checkbox"
+                        id="featured"
                         checked={formData.featured}
                         onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                        className="mr-2 w-4 h-4 text-primary-600 focus:ring-primary-500"
+                        className="w-5 h-5 text-primary-600 focus:ring-primary-500 focus:ring-2 rounded"
                       />
-                      <FaTag className="text-primary-600" />
-                      <span>Featured Bike</span>
-                    </label>
+                      <label htmlFor="featured" className="flex items-center space-x-2 cursor-pointer">
+                        <FaTag className="text-primary-600" />
+                        <span className="font-medium">Featured Bike</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center space-x-2 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                      <input
+                        type="checkbox"
+                        id="available"
+                        checked={formData.isAvailable !== false}
+                        onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
+                        className="w-5 h-5 text-primary-600 focus:ring-primary-500 focus:ring-2 rounded"
+                      />
+                      <label htmlFor="available" className="flex items-center space-x-2 cursor-pointer">
+                        <FaCheckCircle className="text-green-600" />
+                        <span className="font-medium">Available Now</span>
+                      </label>
+                      <span className="text-xs text-gray-500 ml-2">(Uncheck for upcoming)</span>
+                    </div>
                   </div>
 
                   <div className="flex justify-end gap-2 pt-4 border-t">
@@ -817,7 +836,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.engine?.displacement || ''}
                           onChange={(e) => updateSpecification('engine', 'displacement', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 390"
                         />
                       </div>
@@ -827,7 +846,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.engine?.maxPower || ''}
                           onChange={(e) => updateSpecification('engine', 'maxPower', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 43.5 PS @ 9000 rpm"
                         />
                       </div>
@@ -837,7 +856,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.engine?.maxTorque || ''}
                           onChange={(e) => updateSpecification('engine', 'maxTorque', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 37 Nm @ 7000 rpm"
                         />
                       </div>
@@ -846,7 +865,8 @@ const AdminBikeManagement = () => {
                         <select
                           value={formData.specifications.engine?.cooling || ''}
                           onChange={(e) => updateSpecification('engine', 'cooling', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                          style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
                         >
                           <option value="">Select</option>
                           <option value="Liquid Cooled">Liquid Cooled</option>
@@ -859,7 +879,8 @@ const AdminBikeManagement = () => {
                         <select
                           value={formData.specifications.engine?.transmission || ''}
                           onChange={(e) => updateSpecification('engine', 'transmission', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                          style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
                         >
                           <option value="">Select</option>
                           <option value="6 Speed Manual">6 Speed Manual</option>
@@ -873,7 +894,8 @@ const AdminBikeManagement = () => {
                         <select
                           value={formData.specifications.engine?.engineType || ''}
                           onChange={(e) => updateSpecification('engine', 'engineType', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                          style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
                         >
                           <option value="">Select</option>
                           <option value="Single Cylinder">Single Cylinder</option>
@@ -898,7 +920,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.performance?.topSpeed || ''}
                           onChange={(e) => updateSpecification('performance', 'topSpeed', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 167"
                         />
                       </div>
@@ -908,7 +930,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.performance?.mileage || ''}
                           onChange={(e) => updateSpecification('performance', 'mileage', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 25"
                         />
                       </div>
@@ -918,7 +940,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.performance?.fuelCapacity || ''}
                           onChange={(e) => updateSpecification('performance', 'fuelCapacity', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 13.5"
                         />
                       </div>
@@ -928,7 +950,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.performance?.acceleration || ''}
                           onChange={(e) => updateSpecification('performance', 'acceleration', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 3.2"
                         />
                       </div>
@@ -948,7 +970,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.length || ''}
                           onChange={(e) => updateSpecification('dimensions', 'length', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 2002"
                         />
                       </div>
@@ -958,7 +980,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.width || ''}
                           onChange={(e) => updateSpecification('dimensions', 'width', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 821"
                         />
                       </div>
@@ -968,7 +990,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.height || ''}
                           onChange={(e) => updateSpecification('dimensions', 'height', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 1267"
                         />
                       </div>
@@ -978,7 +1000,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.wheelbase || ''}
                           onChange={(e) => updateSpecification('dimensions', 'wheelbase', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 1357"
                         />
                       </div>
@@ -988,7 +1010,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.groundClearance || ''}
                           onChange={(e) => updateSpecification('dimensions', 'groundClearance', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 155"
                         />
                       </div>
@@ -998,7 +1020,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.seatHeight || ''}
                           onChange={(e) => updateSpecification('dimensions', 'seatHeight', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 800"
                         />
                       </div>
@@ -1008,7 +1030,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.dimensions?.kerbWeight || ''}
                           onChange={(e) => updateSpecification('dimensions', 'kerbWeight', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 149"
                         />
                       </div>
@@ -1027,7 +1049,8 @@ const AdminBikeManagement = () => {
                         <select
                           value={formData.specifications.brakes?.front || ''}
                           onChange={(e) => updateSpecification('brakes', 'front', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                          style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
                         >
                           <option value="">Select</option>
                           <option value="Disc">Disc</option>
@@ -1040,7 +1063,8 @@ const AdminBikeManagement = () => {
                         <select
                           value={formData.specifications.brakes?.rear || ''}
                           onChange={(e) => updateSpecification('brakes', 'rear', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent appearance-none bg-white cursor-pointer"
+                          style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
                         >
                           <option value="">Select</option>
                           <option value="Disc">Disc</option>
@@ -1070,7 +1094,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.suspension?.front || ''}
                           onChange={(e) => updateSpecification('suspension', 'front', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., Upside Down Forks"
                         />
                       </div>
@@ -1080,7 +1104,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.suspension?.rear || ''}
                           onChange={(e) => updateSpecification('suspension', 'rear', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., Monoshock"
                         />
                       </div>
@@ -1097,7 +1121,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.tyres?.front || ''}
                           onChange={(e) => updateSpecification('tyres', 'front', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 110/70 R17"
                         />
                       </div>
@@ -1107,7 +1131,7 @@ const AdminBikeManagement = () => {
                           type="text"
                           value={formData.specifications.tyres?.rear || ''}
                           onChange={(e) => updateSpecification('tyres', 'rear', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                           placeholder="e.g., 150/60 R17"
                         />
                       </div>
@@ -1131,7 +1155,7 @@ const AdminBikeManagement = () => {
                             e.target.value = '';
                           }
                         }}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
+                        className="flex-1 px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
                       <button
                         type="button"

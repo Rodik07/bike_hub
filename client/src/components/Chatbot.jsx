@@ -3,6 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { FaRobot, FaPaperPlane, FaTimes } from 'react-icons/fa';
 import LoadingSpinner from './LoadingSpinner';
+import { sanitizeText } from '../utils/sanitize';
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([
@@ -61,7 +62,7 @@ const Chatbot = () => {
           <h3 className="font-bold text-lg">BikeHub Assistant</h3>
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
         {messages.map((msg, idx) => (
           <div
@@ -69,16 +70,15 @@ const Chatbot = () => {
             className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[85%] p-3 rounded-2xl ${
-                msg.type === 'user'
-                  ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-br-sm'
-                  : 'bg-white text-gray-800 shadow-md rounded-bl-sm border border-gray-200'
-              }`}
+              className={`max-w-[85%] p-3 rounded-2xl ${msg.type === 'user'
+                ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-br-sm'
+                : 'bg-white text-gray-800 shadow-md rounded-bl-sm border border-gray-200'
+                }`}
             >
               {msg.type === 'bot' && (
                 <FaRobot className="inline mr-2 text-primary-600" size={14} />
               )}
-              <div className="text-sm leading-relaxed whitespace-pre-line">{msg.text}</div>
+              <div className="text-sm leading-relaxed whitespace-pre-line">{sanitizeText(msg.text)}</div>
             </div>
           </div>
         ))}

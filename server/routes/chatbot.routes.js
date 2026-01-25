@@ -1,4 +1,5 @@
 import express from 'express';
+import { body, validationResult } from 'express-validator';
 import Bike from '../models/Bike.model.js';
 
 const router = express.Router();
@@ -85,14 +86,14 @@ const extractBikeName = (message) => {
     /(?:what|tell|show|about|specs?|specification|details?|info|information|price|cost|mileage|engine|power|torque|speed|weight|dimension|brake|suspension|color|feature|compare|vs|versus|better|best|difference|between)\s+(?:me|about|the|a|an)?\s*([a-z0-9\s]+?)(?:\s+(?:bike|motorcycle|scooter|model))?/i,
     /([a-z0-9\s]+?)(?:\s+(?:bike|motorcycle|scooter|model))(?:\s+(?:specs?|specification|details?|info|information|price|cost|mileage|engine|power|torque|speed|weight|dimension|brake|suspension|color|feature))?/i
   ];
-  
+
   for (const pattern of bikePatterns) {
     const match = message.match(pattern);
     if (match && match[1]) {
       return match[1].trim();
     }
   }
-  
+
   return null;
 };
 
@@ -103,23 +104,23 @@ const extractBikeNames = (message) => {
     /(?:compare|vs|versus|difference|between|better|best|which)\s+(?:me|the|a|an)?\s*([a-z0-9\s]+?)\s+(?:and|vs|versus|or)\s+([a-z0-9\s]+?)(?:\s+(?:bike|motorcycle|scooter))?/i,
     /([a-z0-9\s]+?)\s+(?:vs|versus|or)\s+([a-z0-9\s]+?)(?:\s+(?:bike|motorcycle|scooter))?(?:\s+(?:which|better|best|difference))?/i
   ];
-  
+
   for (const pattern of comparisonPatterns) {
     const match = message.match(pattern);
     if (match && match[1] && match[2]) {
       return [match[1].trim(), match[2].trim()];
     }
   }
-  
+
   return null;
 };
 
 // Format bike specifications
 const formatBikeSpecs = (bike) => {
   if (!bike) return 'Bike not found.';
-  
+
   let response = `Here are the specifications for ${bike.name}:\n\n`;
-  
+
   if (bike.specifications?.engine) {
     response += `**Engine:**\n`;
     if (bike.specifications.engine.displacement) response += `- Displacement: ${bike.specifications.engine.displacement}\n`;
@@ -129,7 +130,7 @@ const formatBikeSpecs = (bike) => {
     if (bike.specifications.engine.transmission) response += `- Transmission: ${bike.specifications.engine.transmission}\n`;
     response += '\n';
   }
-  
+
   if (bike.specifications?.performance) {
     response += `**Performance:**\n`;
     if (bike.specifications.performance.mileage) response += `- Mileage: ${bike.specifications.performance.mileage}\n`;
@@ -137,7 +138,7 @@ const formatBikeSpecs = (bike) => {
     if (bike.specifications.performance.fuelCapacity) response += `- Fuel Capacity: ${bike.specifications.performance.fuelCapacity}\n`;
     response += '\n';
   }
-  
+
   if (bike.specifications?.dimensions) {
     response += `**Dimensions:**\n`;
     if (bike.specifications.dimensions.kerbWeight) response += `- Weight: ${bike.specifications.dimensions.kerbWeight}\n`;
@@ -145,20 +146,20 @@ const formatBikeSpecs = (bike) => {
     if (bike.specifications.dimensions.groundClearance) response += `- Ground Clearance: ${bike.specifications.dimensions.groundClearance}\n`;
     response += '\n';
   }
-  
+
   if (bike.price) {
     response += `**Price:** ₹${bike.price.toLocaleString()}\n`;
   }
-  
+
   return response;
 };
 
 // Compare two bikes
 const compareBikes = (bike1, bike2) => {
   if (!bike1 || !bike2) return 'One or both bikes not found.';
-  
+
   let response = `**Comparison: ${bike1.name} vs ${bike2.name}**\n\n`;
-  
+
   // Price comparison
   if (bike1.price && bike2.price) {
     const priceDiff = bike1.price - bike2.price;
@@ -170,7 +171,7 @@ const compareBikes = (bike1, bike2) => {
       response += `💰 **Price:** Both bikes have the same price (₹${bike1.price.toLocaleString()}).\n`;
     }
   }
-  
+
   // Mileage comparison
   const mileage1 = bike1.specifications?.performance?.mileage;
   const mileage2 = bike2.specifications?.performance?.mileage;
@@ -187,7 +188,7 @@ const compareBikes = (bike1, bike2) => {
       }
     }
   }
-  
+
   // Power comparison
   const power1 = bike1.specifications?.engine?.maxPower;
   const power2 = bike2.specifications?.engine?.maxPower;
@@ -202,7 +203,7 @@ const compareBikes = (bike1, bike2) => {
       }
     }
   }
-  
+
   // Weight comparison
   const weight1 = bike1.specifications?.dimensions?.kerbWeight;
   const weight2 = bike2.specifications?.dimensions?.kerbWeight;
@@ -217,7 +218,7 @@ const compareBikes = (bike1, bike2) => {
       }
     }
   }
-  
+
   // ABS comparison
   const abs1 = bike1.specifications?.brakes?.abs;
   const abs2 = bike2.specifications?.brakes?.abs;
@@ -230,7 +231,7 @@ const compareBikes = (bike1, bike2) => {
       response += `🛡️ **Safety:** Both bikes have ABS.\n`;
     }
   }
-  
+
   response += `\n💡 **Recommendation:** `;
   if (mileage1 && mileage2) {
     const m1 = parseFloat(mileage1);
@@ -253,33 +254,33 @@ const compareBikes = (bike1, bike2) => {
   } else {
     response += `Consider your priorities: budget, fuel efficiency, power, and features.`;
   }
-  
+
   return response;
 };
 
 // Simple keyword matching function with database queries
 const findResponse = async (message) => {
   const lowerMessage = message.toLowerCase();
-  
+
   // Check for bike comparison queries
   const bikeNames = extractBikeNames(message);
   if (bikeNames) {
     try {
       const [bike1, bike2] = await Promise.all([
-        Bike.findOne({ 
+        Bike.findOne({
           $or: [
             { name: { $regex: bikeNames[0], $options: 'i' } },
             { brand: { $regex: bikeNames[0], $options: 'i' } }
           ]
         }),
-        Bike.findOne({ 
+        Bike.findOne({
           $or: [
             { name: { $regex: bikeNames[1], $options: 'i' } },
             { brand: { $regex: bikeNames[1], $options: 'i' } }
           ]
         })
       ]);
-      
+
       if (bike1 && bike2) {
         return compareBikes(bike1, bike2);
       } else if (bike1 || bike2) {
@@ -291,15 +292,15 @@ const findResponse = async (message) => {
       console.error('Error comparing bikes:', error);
     }
   }
-  
+
   // Check for bike specification queries
   const bikeName = extractBikeName(message);
-  if (bikeName && (lowerMessage.includes('spec') || lowerMessage.includes('specification') || 
-      lowerMessage.includes('detail') || lowerMessage.includes('info') || 
-      lowerMessage.includes('mileage') || lowerMessage.includes('power') || 
-      lowerMessage.includes('engine') || lowerMessage.includes('price') ||
-      lowerMessage.includes('weight') || lowerMessage.includes('speed') ||
-      lowerMessage.includes('brake') || lowerMessage.includes('suspension'))) {
+  if (bikeName && (lowerMessage.includes('spec') || lowerMessage.includes('specification') ||
+    lowerMessage.includes('detail') || lowerMessage.includes('info') ||
+    lowerMessage.includes('mileage') || lowerMessage.includes('power') ||
+    lowerMessage.includes('engine') || lowerMessage.includes('price') ||
+    lowerMessage.includes('weight') || lowerMessage.includes('speed') ||
+    lowerMessage.includes('brake') || lowerMessage.includes('suspension'))) {
     try {
       const bike = await Bike.findOne({
         $or: [
@@ -307,7 +308,7 @@ const findResponse = async (message) => {
           { brand: { $regex: bikeName, $options: 'i' } }
         ]
       });
-      
+
       if (bike) {
         return formatBikeSpecs(bike);
       } else {
@@ -318,7 +319,7 @@ const findResponse = async (message) => {
             { brand: { $regex: bikeName.split(' ')[0], $options: 'i' } }
           ]
         }).limit(3).select('name brand');
-        
+
         if (similarBikes.length > 0) {
           return `I couldn't find "${bikeName}". Did you mean: ${similarBikes.map(b => b.name).join(', ')}?`;
         }
@@ -328,15 +329,15 @@ const findResponse = async (message) => {
       console.error('Error fetching bike:', error);
     }
   }
-  
+
   // Check for conditional questions
   if (lowerMessage.includes('better') || lowerMessage.includes('best') || lowerMessage.includes('recommend')) {
     if (lowerMessage.includes('mileage') || lowerMessage.includes('fuel')) {
       try {
-        const bikes = await Bike.find({ 
+        const bikes = await Bike.find({
           'specifications.performance.mileage': { $exists: true, $ne: '' }
         }).limit(5).sort({ 'specifications.performance.mileage': -1 });
-        
+
         if (bikes.length > 0) {
           return `For best mileage, I recommend: ${bikes.map(b => `${b.name} (${b.specifications?.performance?.mileage || 'N/A'})`).join(', ')}. Check their detail pages for complete specifications.`;
         }
@@ -344,7 +345,7 @@ const findResponse = async (message) => {
         console.error('Error fetching bikes by mileage:', error);
       }
     }
-    
+
     if (lowerMessage.includes('price') || lowerMessage.includes('cheap') || lowerMessage.includes('affordable')) {
       try {
         const bikes = await Bike.find({ price: { $exists: true } }).limit(5).sort({ price: 1 });
@@ -355,13 +356,13 @@ const findResponse = async (message) => {
         console.error('Error fetching bikes by price:', error);
       }
     }
-    
+
     if (lowerMessage.includes('power') || lowerMessage.includes('speed') || lowerMessage.includes('performance')) {
       try {
-        const bikes = await Bike.find({ 
+        const bikes = await Bike.find({
           'specifications.engine.maxPower': { $exists: true, $ne: '' }
         }).limit(5);
-        
+
         if (bikes.length > 0) {
           return `For high performance, check out: ${bikes.map(b => `${b.name} (${b.specifications?.engine?.maxPower || 'N/A'})`).join(', ')}. Visit their detail pages for complete specifications.`;
         }
@@ -370,18 +371,18 @@ const findResponse = async (message) => {
       }
     }
   }
-  
+
   // Standard keyword matching
   for (const rule of chatbotRules) {
-    const hasKeyword = rule.keywords.some(keyword => 
+    const hasKeyword = rule.keywords.some(keyword =>
       lowerMessage.includes(keyword.toLowerCase())
     );
-    
+
     if (hasKeyword) {
       return rule.responses[Math.floor(Math.random() * rule.responses.length)];
     }
   }
-  
+
   // Default response if no keywords match
   return 'I can help you with bike information, test ride bookings, dealer locations, and more. Could you please rephrase your question? You can ask about bike specifications, compare bikes, or get recommendations.';
 };
@@ -389,16 +390,24 @@ const findResponse = async (message) => {
 // @route   POST /api/chatbot
 // @desc    Get chatbot response
 // @access  Public
-router.post('/', async (req, res) => {
+router.post('/', [
+  body('message').trim().escape().notEmpty().withMessage('Message is required').isLength({ max: 500 }).withMessage('Message must be less than 500 characters')
+], async (req, res) => {
   try {
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { message } = req.body;
-    
+
     if (!message || message.trim() === '') {
       return res.status(400).json({ message: 'Message is required' });
     }
-    
+
     const response = await findResponse(message);
-    
+
     res.json({ response });
   } catch (error) {
     console.error('Chatbot error:', error);
@@ -422,7 +431,7 @@ router.get('/suggestions', (req, res) => {
     'How do I calculate EMI?',
     'Where are service centers located?'
   ];
-  
+
   res.json({ suggestions });
 });
 

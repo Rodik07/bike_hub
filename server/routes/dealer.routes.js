@@ -1,4 +1,5 @@
 import express from 'express';
+import { query, body, validationResult } from 'express-validator';
 import Dealer from '../models/Dealer.model.js';
 import Bike from '../models/Bike.model.js';
 import DealerBikeListing from '../models/DealerBikeListing.model.js';
@@ -10,11 +11,21 @@ const router = express.Router();
 // @route   GET /api/dealers
 // @desc    Get all dealers (public route for dealer locator)
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', [
+  query('type').optional().trim().escape(),
+  query('city').optional().trim().escape(),
+  query('state').optional().trim().escape()
+], async (req, res) => {
   try {
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { type, city, state } = req.query;
     const filter = { isActive: true };
-    
+
     if (type) {
       filter.type = type;
     }
@@ -24,11 +35,11 @@ router.get('/', async (req, res) => {
     if (state) {
       filter['address.state'] = { $regex: state, $options: 'i' };
     }
-    
+
     const dealers = await Dealer.find(filter)
       .select('name type email phone address location workingHours brands services isActive')
       .sort({ createdAt: -1 });
-    
+
     res.json(dealers);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -41,24 +52,24 @@ router.get('/', async (req, res) => {
 router.get('/:id/bikes', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Find dealer
     const dealer = await Dealer.findById(id);
     if (!dealer) {
       return res.status(404).json({ message: 'Dealer not found' });
     }
-    
+
     // Get all active listings for this dealer
-    const listings = await DealerBikeListing.find({ 
+    const listings = await DealerBikeListing.find({
       dealer: id,
-      isActive: true 
+      isActive: true
     })
       .populate('bike', 'name brand category price images specifications')
       .sort({ createdAt: -1 });
-    
+
     // Filter out listings where bike is not available
     const activeListings = listings.filter(listing => listing.bike && listing.bike.isAvailable !== false);
-    
+
     res.json({
       dealer: {
         _id: dealer._id,
@@ -91,18 +102,18 @@ router.use(protect);
 // @access  Private/Dealer
 router.get('/bikes', authorize('dealer', 'admin'), async (req, res) => {
   try {
-    const { 
-      search = '', 
-      brand = '', 
+    const {
+      search = '',
+      brand = '',
       category = '',
       sortBy = 'newest', // 'newest', 'oldest', 'priceHigh', 'priceLow'
-      page = 1, 
-      limit = 12 
+      page = 1,
+      limit = 12
     } = req.query;
 
     // Build filter
     const filter = { isAvailable: true };
-    
+
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -110,11 +121,11 @@ router.get('/bikes', authorize('dealer', 'admin'), async (req, res) => {
         { category: { $regex: search, $options: 'i' } }
       ];
     }
-    
+
     if (brand) {
       filter.brand = { $regex: brand, $options: 'i' };
     }
-    
+
     if (category) {
       filter.category = category;
     }
@@ -140,7 +151,7 @@ router.get('/bikes', authorize('dealer', 'admin'), async (req, res) => {
 
     // Get total count for pagination
     const total = await Bike.countDocuments(filter);
-    
+
     // Calculate pagination
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
@@ -189,7 +200,7 @@ router.get('/my-listings', authorize('dealer', 'admin'), async (req, res) => {
     const listings = await DealerBikeListing.find({ dealer: dealer._id })
       .populate('bike', 'name brand category price images')
       .sort({ createdAt: -1 });
-    
+
     res.json(listings);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -199,10 +210,12 @@ router.get('/my-listings', authorize('dealer', 'admin'), async (req, res) => {
 // @route   POST /api/dealers/list-bike
 // @desc    List a bike for test ride or purchase
 // @access  Private/Dealer
-router.post('/list-bike', authorize('dealer', 'admin'), async (req, res) => {
+router.post('/list-bike', authorize('dealer', 'admin'), [
+  body('notes').optional().trim().escape()
+], async (req, res) => {
   try {
     const { bikeId, availableForTestRide, availableForPurchase, onRoadPrice, stock, notes } = req.body;
-    
+
     const dealer = await Dealer.findOne({ email: req.user.email });
     if (!dealer) {
       return res.status(404).json({ message: 'Dealer not found' });
@@ -229,7 +242,7 @@ router.post('/list-bike', authorize('dealer', 'admin'), async (req, res) => {
       existingListing.notes = notes || existingListing.notes;
       existingListing.isActive = true;
       await existingListing.save();
-      
+
       return res.json({ message: 'Bike listing updated', listing: existingListing });
     }
 
@@ -328,7 +341,7 @@ router.get('/bookings', authorize('dealer', 'admin'), async (req, res) => {
       .populate('bike', 'name brand images')
       .populate('user', 'name email phone')
       .sort({ createdAt: -1 });
-    
+
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -1,18 +1,32 @@
 import express from 'express';
+import { query, validationResult } from 'express-validator';
 import Bike from '../models/Bike.model.js';
-import { protect } from '../middleware/auth.middleware.js';
+import { protect, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
 // @route   GET /api/bikes
 // @desc    Get all bikes with filters
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', [
+  query('brand').optional().trim().escape(),
+  query('category').optional().trim().escape(),
+  query('search').optional().trim().escape(),
+  query('minPrice').optional().isNumeric().toFloat(),
+  query('maxPrice').optional().isNumeric().toFloat(),
+  query('featured').optional().isBoolean()
+], async (req, res) => {
   try {
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { brand, category, search, minPrice, maxPrice, featured } = req.query;
-    
+
     const filter = {};
-    
+
     if (brand) filter.brand = brand;
     if (category) filter.category = category;
     if (featured === 'true') filter.featured = true;
@@ -21,16 +35,16 @@ router.get('/', async (req, res) => {
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
-    
+
     let query = Bike.find(filter);
-    
+
     if (search) {
       query = Bike.find({
         ...filter,
         $text: { $search: search }
       });
     }
-    
+
     const bikes = await query.sort({ createdAt: -1 });
     res.json(bikes);
   } catch (error) {
@@ -68,15 +82,15 @@ router.get('/categories', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const bike = await Bike.findById(req.params.id);
-    
+
     if (!bike) {
       return res.status(404).json({ message: 'Bike not found' });
     }
-    
+
     // Increment view count
     bike.views += 1;
     await bike.save();
-    
+
     res.json(bike);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -89,14 +103,14 @@ router.get('/:id', async (req, res) => {
 router.post('/:id/compare', protect, async (req, res) => {
   try {
     const bike = await Bike.findById(req.params.id);
-    
+
     if (!bike) {
       return res.status(404).json({ message: 'Bike not found' });
     }
-    
+
     bike.comparisons += 1;
     await bike.save();
-    
+
     res.json({ message: 'Comparison tracked', comparisons: bike.comparisons });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -106,12 +120,8 @@ router.post('/:id/compare', protect, async (req, res) => {
 // @route   POST /api/bikes
 // @desc    Create new bike (Admin only)
 // @access  Private/Admin
-router.post('/', protect, async (req, res) => {
+router.post('/', protect, authorize('admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-    
     const bike = await Bike.create(req.body);
     res.status(201).json(bike);
   } catch (error) {
@@ -122,22 +132,18 @@ router.post('/', protect, async (req, res) => {
 // @route   PUT /api/bikes/:id
 // @desc    Update bike (Admin only)
 // @access  Private/Admin
-router.put('/:id', protect, async (req, res) => {
+router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-    
     const bike = await Bike.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
-    
+
     if (!bike) {
       return res.status(404).json({ message: 'Bike not found' });
     }
-    
+
     res.json(bike);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -147,18 +153,14 @@ router.put('/:id', protect, async (req, res) => {
 // @route   DELETE /api/bikes/:id
 // @desc    Delete bike (Admin only)
 // @access  Private/Admin
-router.delete('/:id', protect, async (req, res) => {
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
-    
     const bike = await Bike.findByIdAndDelete(req.params.id);
-    
+
     if (!bike) {
       return res.status(404).json({ message: 'Bike not found' });
     }
-    
+
     res.json({ message: 'Bike deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

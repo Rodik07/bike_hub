@@ -196,7 +196,18 @@ router.post('/login', strictAuthLimiter, [
     await user.save();
 
     // Send OTP email
-    await sendOTPEmail(user.email, user.name, otpCode);
+    const emailSent = await sendOTPEmail(user.email, user.name, otpCode);
+
+    if (!emailSent) {
+      // Clear OTP if email failed
+      user.otpCode = undefined;
+      user.otpExpiry = undefined;
+      await user.save();
+      return res.status(500).json({
+        message: 'Failed to send OTP email. Please check email configuration or try again later.',
+        emailError: true
+      });
+    }
 
     res.json({
       message: 'OTP sent to your email. Please verify to complete login.',
@@ -332,7 +343,18 @@ router.post('/resend-otp', moderateAuthLimiter, [
     await user.save();
 
     // Send OTP email
-    await sendOTPEmail(user.email, user.name, otpCode);
+    const emailSent = await sendOTPEmail(user.email, user.name, otpCode);
+
+    if (!emailSent) {
+      // Clear OTP if email failed
+      user.otpCode = undefined;
+      user.otpExpiry = undefined;
+      await user.save();
+      return res.status(500).json({
+        message: 'Failed to send OTP email. Please check email configuration or try again later.',
+        emailError: true
+      });
+    }
 
     res.json({
       message: 'A new OTP has been sent to your email.',
@@ -538,10 +560,19 @@ router.get(
       await user.save();
 
       // Send OTP email
-      await sendOTPEmail(user.email, user.name, otpCode);
+      const emailSent = await sendOTPEmail(user.email, user.name, otpCode);
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+      if (!emailSent) {
+        // Clear OTP if email failed
+        user.otpCode = undefined;
+        user.otpExpiry = undefined;
+        await user.save();
+        return res.redirect(`${frontendUrl}/login?error=email_failed`);
+      }
 
       // Redirect to frontend with OAuth flag and email (no token yet)
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       res.redirect(`${frontendUrl}/auth/callback?otpRequired=true&email=${encodeURIComponent(req.user.email)}&name=${encodeURIComponent(req.user.name)}&provider=google`);
     } catch (error) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';

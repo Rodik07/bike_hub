@@ -11,6 +11,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
+import rateLimit from 'express-rate-limit';
+import { validateUploadedFiles } from '../middleware/fileValidation.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -101,6 +103,15 @@ const upload = multer({
 
 const router = express.Router();
 
+// Strict rate limit for file uploads (separate from general API limit)
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Max 20 file uploads per 15 minutes per IP
+  message: 'Too many file uploads from this IP, please try again in 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // All routes require admin access
 router.use(protect);
 router.use(authorize('admin'));
@@ -187,11 +198,11 @@ router.get('/stats', async (req, res) => {
 // @route   POST /api/admin/bikes
 // @desc    Create bike with image and 3D model upload
 // @access  Private/Admin
-router.post('/bikes', upload.fields([
+router.post('/bikes', uploadLimiter, upload.fields([
   { name: 'images', maxCount: 10 },
   { name: 'model360', maxCount: 1 },
   { name: 'exhaustSound', maxCount: 1 }
-]), validateBike, checkValidation, async (req, res) => {
+]), validateUploadedFiles, validateBike, checkValidation, async (req, res) => {
   try {
     const bikeData = { ...req.body };
 
@@ -240,11 +251,11 @@ router.post('/bikes', upload.fields([
 // @route   PUT /api/admin/bikes/:id
 // @desc    Update bike with image and 3D model upload
 // @access  Private/Admin
-router.put('/bikes/:id', upload.fields([
+router.put('/bikes/:id', uploadLimiter, upload.fields([
   { name: 'images', maxCount: 10 },
   { name: 'model360', maxCount: 1 },
   { name: 'exhaustSound', maxCount: 1 }
-]), validateBike, checkValidation, async (req, res) => {
+]), validateUploadedFiles, validateBike, checkValidation, async (req, res) => {
   try {
     const bikeData = { ...req.body };
 
@@ -407,7 +418,7 @@ router.get('/promotions', async (req, res) => {
 // @route   POST /api/admin/promotions
 // @desc    Create promotion
 // @access  Private/Admin
-router.post('/promotions', upload.single('image'), validatePromotion, checkValidation, async (req, res) => {
+router.post('/promotions', uploadLimiter, upload.single('image'), validateUploadedFiles, validatePromotion, checkValidation, async (req, res) => {
   try {
     const promotionData = { ...req.body };
 
@@ -426,7 +437,7 @@ router.post('/promotions', upload.single('image'), validatePromotion, checkValid
 // @route   PUT /api/admin/promotions/:id
 // @desc    Update promotion
 // @access  Private/Admin
-router.put('/promotions/:id', upload.single('image'), validatePromotion, checkValidation, async (req, res) => {
+router.put('/promotions/:id', uploadLimiter, upload.single('image'), validateUploadedFiles, validatePromotion, checkValidation, async (req, res) => {
   try {
     const promotionData = { ...req.body };
 

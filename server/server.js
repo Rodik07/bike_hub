@@ -39,9 +39,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Security Middleware
-// Set security HTTP headers
+// Set security HTTP headers with strict Content Security Policy
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" } // Allow resources to be loaded by other origins (e.g., frontend)
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow resources to be loaded by other origins (e.g., frontend)
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"], // Only allow scripts from same origin, block inline scripts
+      styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for React/CSS-in-JS
+      imgSrc: ["'self'", "data:", "https:", "blob:"], // Allow images from same origin, data URIs, HTTPS, and blobs
+      fontSrc: ["'self'", "data:", "https:"], // Allow fonts from same origin, data URIs, and HTTPS
+      connectSrc: ["'self'"], // Only allow AJAX/WebSocket connections to same origin
+      mediaSrc: ["'self'", "blob:"], // Allow media from same origin and blobs (for audio/video)
+      objectSrc: ["'none'"], // Disallow plugins (Flash, Java, etc.)
+      frameSrc: ["'self'"], // Only allow iframes from same origin
+      baseUri: ["'self'"], // Prevent base tag injection
+      formAction: ["'self'"], // Only allow form submissions to same origin
+      upgradeInsecureRequests: [] // Upgrade HTTP requests to HTTPS in production
+    }
+  }
 }));
 
 // Rate Limiting
@@ -72,7 +88,7 @@ app.use((req, res, next) => {
   const origin = req.get('Origin');
   // Referer is often less reliable but can be a fallback. 
   // Strict Origin check is best for APIs called by browsers.
-  
+
   const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:3000';
 
   // If Origin header is present, it MUST match
@@ -80,10 +96,10 @@ app.use((req, res, next) => {
     if (origin !== allowedOrigin) {
       return res.status(403).json({ message: 'CSRF Protection: Origin mismatch' });
     }
-  } 
+  }
   // If no Origin (e.g. server-to-server or strict privacy settings), check Referer as fallback if available
   // NOTE: Modern browsers usually send Origin on POST. 
-  
+
   next();
 });
 
@@ -106,8 +122,26 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Serve static files (images, 360 assets)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files (images, 360 assets, audio) with security options
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  index: false,        // Disable directory listings
+  dotfiles: 'deny',    // Deny access to hidden files (.htaccess, etc.)
+  setHeaders: (res, filepath) => {
+    // Add security headers for all uploaded files
+    res.set('X-Content-Type-Options', 'nosniff'); // Prevent MIME-sniffing
+    res.set('X-Frame-Options', 'DENY');           // Prevent clickjacking
+
+    // Set appropriate cache headers
+    if (filepath.endsWith('.jpg') || filepath.endsWith('.png') ||
+      filepath.endsWith('.webp') || filepath.endsWith('.gif')) {
+      res.set('Cache-Control', 'public, max-age=31536000'); // Cache images for 1 year
+    } else if (filepath.endsWith('.glb') || filepath.endsWith('.gltf')) {
+      res.set('Cache-Control', 'public, max-age=2592000'); // Cache 3D models for 30 days
+    } else if (filepath.endsWith('.mp3') || filepath.endsWith('.wav')) {
+      res.set('Cache-Control', 'public, max-age=2592000'); // Cache audio for 30 days
+    }
+  }
+}));
 
 // Routes
 app.use('/api/auth', authRoutes);

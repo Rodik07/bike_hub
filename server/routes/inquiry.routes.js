@@ -1,4 +1,5 @@
 import express from 'express';
+import { body, validationResult } from 'express-validator';
 import Inquiry from '../models/Inquiry.model.js';
 import { protect } from '../middleware/auth.middleware.js';
 import { moderateAuthLimiter } from '../middleware/rateLimiter.middleware.js';
@@ -8,8 +9,17 @@ const router = express.Router();
 // @route   POST /api/inquiries
 // @desc    Create inquiry
 // @access  Private
-router.post('/', protect, moderateAuthLimiter, async (req, res) => {
+router.post('/', protect, moderateAuthLimiter, [
+  body('subject').trim().escape().notEmpty().withMessage('Subject is required'),
+  body('message').trim().escape().notEmpty().withMessage('Message is required')
+], async (req, res) => {
   try {
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
     const { bike, dealer, subject, message } = req.body;
 
     const inquiry = await Inquiry.create({
@@ -65,10 +75,18 @@ router.get('/', protect, async (req, res) => {
 // @route   PUT /api/inquiries/:id/reply
 // @desc    Reply to inquiry (Dealer/Admin)
 // @access  Private/Dealer/Admin
-router.put('/:id/reply', protect, async (req, res) => {
+router.put('/:id/reply', protect, [
+  body('message').trim().escape().notEmpty().withMessage('Reply message is required')
+], async (req, res) => {
   try {
     if (req.user.role !== 'dealer' && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Dealer or Admin access required' });
+    }
+
+    // Check validation results
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
 
     const { message } = req.body;

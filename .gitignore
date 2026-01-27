@@ -43,15 +43,16 @@ Thumbs.db
 server/uploads/*
 !server/uploads/.gitkeep
 
+# Logs folder (Winston logging)
+logs/
+server/logs/
+*.log
+
 # Documentation files (keep only README.md)
-API_DOCUMENTATION.md
-ENV_SETUP.md
-GOOGLE_OAUTH_SETUP.md
-HOW_TO_LOGIN.md
-PROJECT_SUMMARY.md
-QUICK_START.md
-SETUP_GUIDE.md
-COMPLETE_SETUP_GUIDE.md
+*.md
+!README.md
+*.doc
+*.docx
 
 # Temporary files
 *.tmp

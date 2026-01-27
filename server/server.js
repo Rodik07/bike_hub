@@ -22,6 +22,9 @@ import inquiryRoutes from './routes/inquiry.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import chatbotRoutes from './routes/chatbot.routes.js';
 
+// Import Logger
+import logger, { logInfo, logError, logRequest } from './config/logger.js';
+
 // Initialize Passport (after dotenv.config())
 import passport from './config/passport.js';
 
@@ -76,6 +79,19 @@ app.use(xss());
 
 // Prevent Parameter Pollution
 app.use(hpp());
+
+// HTTP Request Logging Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  // Log after response is sent
+  res.on('finish', () => {
+    const responseTime = Date.now() - start;
+    logRequest(req, res.statusCode, responseTime);
+  });
+
+  next();
+});
 
 // Custom CSRF Protection
 // Ensures that state-changing requests come from the trusted frontend origin

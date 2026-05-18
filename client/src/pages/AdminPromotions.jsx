@@ -51,6 +51,12 @@ const AdminPromotions = () => {
     formDataToSend.append('isActive', formData.isActive);
     formDataToSend.append('priority', formData.priority);
 
+    // Append the image file from the file input
+    const imageInput = e.target.querySelector('input[name="image"]');
+    if (imageInput && imageInput.files[0]) {
+      formDataToSend.append('image', imageInput.files[0]);
+    }
+
     try {
       await axios.post('/api/admin/promotions', formDataToSend);
       toast.success('Promotion created successfully');
@@ -227,7 +233,7 @@ const AdminPromotions = () => {
         {promotions.map((promo) => (
           <div key={promo._id} className="bg-white rounded-lg shadow-md overflow-hidden">
             <img
-              src={`http://localhost:5001${promo.image}`}
+              src={`${promo.image}`}
               alt={promo.title}
               className="w-full h-48 object-cover"
             />
@@ -238,11 +244,10 @@ const AdminPromotions = () => {
               )}
               <div className="flex justify-between items-center mt-4">
                 <span
-                  className={`px-2 py-1 rounded text-xs ${
-                    promo.isActive
+                  className={`px-2 py-1 rounded text-xs ${promo.isActive
                       ? 'bg-green-100 text-green-800'
                       : 'bg-gray-100 text-gray-800'
-                  }`}
+                    }`}
                 >
                   {promo.isActive ? 'Active' : 'Inactive'}
                 </span>

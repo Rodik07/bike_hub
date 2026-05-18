@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Packages</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background-color: #d9534f;
+            color: #ffffff;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        tbody tr:last-of-type {
+            border-bottom: 2px solid #d9534f;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Backend Packages (Server)</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Version</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Core Framework & Server -->
+            <tr>
+                <td>express</td>
+                <td>^4.18.2</td>
+                <td>Robust, fast, and minimalist web framework/server ensuring secure request handling</td>
+            </tr>
+            <tr>
+                <td>dotenv</td>
+                <td>^16.3.1</td>
+                <td>Securely loads sensitive environment variables and secrets into the application</td>
+            </tr>
+            <tr>
+                <td>nodemon</td>
+                <td>^3.0.2</td>
+                <td>Development utility that monitors for changes and automatically restarts the server</td>
+            </tr>
+
+            <!-- Database & Caching -->
+            <tr>
+                <td>mongoose</td>
+                <td>^8.0.3</td>
+                <td>Secure Object Data Modeling (ODM) library for MongoDB with built-in validation</td>
+            </tr>
+            <tr>
+                <td>ioredis</td>
+                <td>^5.9.2</td>
+                <td>High-performance, robust Redis client for secure caching and session storage</td>
+            </tr>
+
+            <!-- Authentication & Session -->
+            <tr>
+                <td>passport</td>
+                <td>^0.7.0</td>
+                <td>Modular authentication middleware to securely handle user identity verification</td>
+            </tr>
+            <tr>
+                <td>passport-google-oauth20</td>
+                <td>^2.0.0</td>
+                <td>Secure OAuth 2.0 authentication strategy for Google Sign-In integration</td>
+            </tr>
+            <tr>
+                <td>jsonwebtoken</td>
+                <td>^9.0.2</td>
+                <td>Standard method for securely representing claims between parties (Auth Tokens)</td>
+            </tr>
+            <tr>
+                <td>bcryptjs</td>
+                <td>^2.4.3</td>
+                <td>Library for securely hashing and salting passwords to protect user credentials</td>
+            </tr>
+            <tr>
+                <td>express-session</td>
+                <td>^1.18.2</td>
+                <td>Secure server-side session middleware for managing user state</td>
+            </tr>
+
+            <!-- Security & Protection -->
+            <tr>
+                <td>helmet</td>
+                <td>^8.1.0</td>
+                <td>Essential security middleware that sets various HTTP headers to protect against common attacks</td>
+            </tr>
+            <tr>
+                <td>cors</td>
+                <td>^2.8.5</td>
+                <td>Middleware to securely configure Cross-Origin Resource Sharing policies</td>
+            </tr>
+            <tr>
+                <td>express-mongo-sanitize</td>
+                <td>^2.2.0</td>
+                <td>Security middleware to prevent MongoDB Operator Injection attacks on inputs</td>
+            </tr>
+            <tr>
+                <td>xss-clean</td>
+                <td>^0.1.4</td>
+                <td>Middleware that sanitizes user input to strictly prevent Cross-Site Scripting (XSS)</td>
+            </tr>
+            <tr>
+                <td>hpp</td>
+                <td>^0.2.3</td>
+                <td>Middleware to protect against HTTP Parameter Pollution attacks</td>
+            </tr>
+            <tr>
+                <td>express-rate-limit</td>
+                <td>^8.2.1</td>
+                <td>Rate-limiting middleware to prevent Brute Force and DDoS attacks</td>
+            </tr>
+            <tr>
+                <td>rate-limit-redis</td>
+                <td>^4.3.1</td>
+                <td>Redis store for efficient and distributed rate limiting across server instances</td>
+            </tr>
+
+            <!-- Validation & File Handling -->
+            <tr>
+                <td>express-validator</td>
+                <td>^7.0.1</td>
+                <td>Middleware for server-side input validation and sanitization to ensure data integrity</td>
+            </tr>
+            <tr>
+                <td>multer</td>
+                <td>^1.4.5-lts.1</td>
+                <td>Middleware for securely handling multipart/form-data for file uploads</td>
+            </tr>
+            <tr>
+                <td>file-type</td>
+                <td>^21.3.0</td>
+                <td>Securely detects file types from binary buffers to validate uploaded content</td>
+            </tr>
+
+            <!-- Logging & Communication -->
+            <tr>
+                <td>winston</td>
+                <td>^3.19.0</td>
+                <td>Versatile logging library for tracking application activity and security audits</td>
+            </tr>
+            <tr>
+                <td>winston-daily-rotate-file</td>
+                <td>^5.0.0</td>
+                <td>Transport for Winston to manage log rotation and prevent disk space exhaustion</td>
+            </tr>
+            <tr>
+                <td>nodemailer</td>
+                <td>^7.0.12</td>
+                <td>Module for securely sending emails from the server application</td>
+            </tr>
+
+            <!-- Build & Optimization -->
+            <tr>
+                <td>terser</td>
+                <td>^5.46.0</td>
+                <td>JavaScript parser and mangler for code minification and optimization</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+
+</html>

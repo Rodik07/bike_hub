@@ -12,6 +12,7 @@ import {
   FaTag
 } from 'react-icons/fa';
 import { fadeInUp, scaleIn, staggerContainer } from '../utils/animations';
+import PromotionBanner from '../components/PromotionBanner';
 
 const BikeComparison = () => {
   const [compareList, setCompareList] = useState([]);
@@ -162,6 +163,9 @@ const BikeComparison = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-4 py-8" ref={containerRef}>
+        {/* Promotion Ad Popup */}
+        <PromotionBanner />
+
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -204,7 +208,7 @@ const BikeComparison = () => {
                       <Link to={`/bikes/${bike._id}`} className="block">
                         {bike.images && bike.images.length > 0 && (
                           <motion.img
-                            src={`http://localhost:5001${bike.images[0].url}`}
+                            src={`${bike.images[0].url}`}
                             alt={bike.name}
                             className="w-32 h-32 object-contain mx-auto mb-3 rounded-xl bg-white/20 p-2"
                             whileHover={{ scale: 1.1, rotate: 5 }}

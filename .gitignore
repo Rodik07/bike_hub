@@ -6,14 +6,19 @@ package-lock.json
 client/package-lock.json
 server/package-lock.json
 
-# Environment variables
+# Environment variables (client + server — do not commit secrets)
+client/.env
+client/.env.*
+!client/.env.example
+server/.env
+server/.env.*
+!server/.env.example
+# Root-level env (optional monorepo / tooling)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
-server/.env
-server/.env.local
 
 # Build outputs
 client/dist/
@@ -46,13 +51,6 @@ server/uploads/*
 # Logs folder (Winston logging)
 logs/
 server/logs/
-*.log
-
-# Documentation files (keep only README.md)
-*.md
-!README.md
-*.doc
-*.docx
 
 # Temporary files
 *.tmp
@@ -67,6 +65,10 @@ data/
 coverage/
 .nyc_output/
 
-# Misc
+# SSL certificates (dev-only, regenerate on new machines)
 *.pem
 *.key
+*.crt
+
+# Markdown documentation
+*.md

@@ -11,6 +11,7 @@ import {
   FaCheckCircle
 } from 'react-icons/fa';
 import LoadingSpinner from './LoadingSpinner';
+import { formatSlotLabel, generateBookingSlots } from '../utils/bookingSlots';
 
 const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
   const [dealers, setDealers] = useState([]);
@@ -22,12 +23,44 @@ const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
   });
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchDealers();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!formData.dealer || !formData.bookingDate) {
+      setAvailableSlots([]);
+      if (formData.preferredTime) {
+        setFormData((prev) => ({ ...prev, preferredTime: '' }));
+      }
+      return;
+    }
+
+    const fetchSlots = async () => {
+      try {
+        setSlotsLoading(true);
+        const { data } = await axios.get('/api/bookings/available-slots', {
+          params: { dealer: formData.dealer, date: formData.bookingDate }
+        });
+        setAvailableSlots(data.availableSlots || []);
+        if (formData.preferredTime && !data.availableSlots?.includes(formData.preferredTime)) {
+          setFormData((prev) => ({ ...prev, preferredTime: '' }));
+        }
+      } catch {
+        setAvailableSlots(generateBookingSlots());
+        toast.error('Could not load available time slots');
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    fetchSlots();
+  }, [formData.dealer, formData.bookingDate]);
 
   const fetchDealers = async () => {
     try {
@@ -62,7 +95,6 @@ const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
       });
       toast.success('Test ride booking requested successfully!');
       onClose();
-      // Reset form
       setFormData({
         dealer: '',
         bookingDate: '',
@@ -85,7 +117,7 @@ const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
           <div className="bg-gradient-to-r from-primary-50 to-accent-50 p-4 rounded-lg flex items-center space-x-3 border border-primary-200">
             {bike.images?.[0] && (
               <img
-                src={`http://localhost:5001${bike.images[0].url}`}
+                src={`${bike.images[0].url}`}
                 alt={bike.name}
                 className="w-16 h-16 object-cover rounded-lg"
               />
@@ -145,27 +177,39 @@ const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
           <div>
             <label className="block text-sm font-medium mb-2 flex items-center space-x-2">
               <FaClock className="text-primary-600" />
-              <span>Preferred Time *</span>
+              <span>Time Slot (15 min) *</span>
             </label>
-            <select
-              name="preferredTime"
-              required
-              value={formData.preferredTime}
-              onChange={handleChange}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all appearance-none bg-white cursor-pointer"
-              style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
-            >
-              <option value="">Select time</option>
-              <option value="09:00">09:00 AM</option>
-              <option value="10:00">10:00 AM</option>
-              <option value="11:00">11:00 AM</option>
-              <option value="12:00">12:00 PM</option>
-              <option value="13:00">01:00 PM</option>
-              <option value="14:00">02:00 PM</option>
-              <option value="15:00">03:00 PM</option>
-              <option value="16:00">04:00 PM</option>
-              <option value="17:00">05:00 PM</option>
-            </select>
+            {slotsLoading ? (
+              <div className="flex justify-center py-3">
+                <LoadingSpinner size={32} inline={true} />
+              </div>
+            ) : (
+              <select
+                name="preferredTime"
+                required
+                disabled={!formData.dealer || !formData.bookingDate || availableSlots.length === 0}
+                value={formData.preferredTime}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all appearance-none bg-white cursor-pointer disabled:bg-gray-100 disabled:cursor-not-allowed"
+                style={{ backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'%3e%3c/polyline%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1.25em 1.25em', paddingRight: '2.5rem' }}
+              >
+                <option value="">
+                  {!formData.dealer || !formData.bookingDate
+                    ? 'Select dealer and date first'
+                    : availableSlots.length === 0
+                      ? 'No slots available'
+                      : 'Select a 15-minute slot'}
+                </option>
+                {availableSlots.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {formatSlotLabel(slot)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              One booking per dealership per 15-minute slot.
+            </p>
           </div>
 
           <div>
@@ -193,7 +237,7 @@ const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
             </button>
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !formData.preferredTime}
               className="flex-1 flex items-center justify-center space-x-2 bg-gradient-to-r from-primary-600 to-accent-500 text-white px-4 py-3 rounded-lg font-semibold hover:from-primary-700 hover:to-accent-600 disabled:opacity-50 transition-all"
             >
               {submitting ? (
@@ -216,4 +260,3 @@ const TestRideBookingModal = ({ isOpen, onClose, bikeId, bike }) => {
 };
 
 export default TestRideBookingModal;
-

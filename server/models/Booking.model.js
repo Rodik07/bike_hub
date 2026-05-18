@@ -49,5 +49,15 @@ const bookingSchema = new mongoose.Schema({
   timestamps: true
 });
 
+bookingSchema.index(
+  { dealer: 1, bookingDate: 1, preferredTime: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ['pending', 'approved'] }
+    }
+  }
+);
+
 export default mongoose.model('Booking', bookingSchema);
 

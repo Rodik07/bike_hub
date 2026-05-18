@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Packages</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f9;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background-color: #009879;
+            color: #ffffff;
+            text-align: left;
+        }
+
+        th,
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dddddd;
+        }
+
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        tbody tr:last-of-type {
+            border-bottom: 2px solid #009879;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Frontend Packages (Client)</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Package</th>
+                <th>Version</th>
+                <th>Purpose</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Core & Framework -->
+            <tr>
+                <td>react</td>
+                <td>^18.2.0</td>
+                <td>Core feature-rich library for building reliable, secure, and component-based user interfaces</td>
+            </tr>
+            <tr>
+                <td>react-dom</td>
+                <td>^18.2.0</td>
+                <td>Secure DOM entry point and renderer ensuring safe updates to the document structure</td>
+            </tr>
+            <tr>
+                <td>react-router-dom</td>
+                <td>^6.20.1</td>
+                <td>Secure client-side routing library managing navigation state and protected routes</td>
+            </tr>
+
+            <!-- Build & Styling -->
+            <tr>
+                <td>vite</td>
+                <td>^5.0.8</td>
+                <td>Development and build tool supporting optimized, secure builds with modern standards</td>
+            </tr>
+            <tr>
+                <td>tailwindcss</td>
+                <td>^3.3.6</td>
+                <td>Utility-first framework for generating consistent, optimized, and maintainable CSS</td>
+            </tr>
+            <tr>
+                <td>postcss</td>
+                <td>^8.4.32</td>
+                <td>Tool for transforming CSS with plugins to enforce secure and standard styles</td>
+            </tr>
+            <tr>
+                <td>autoprefixer</td>
+                <td>^10.4.16</td>
+                <td>CSS processor ensuring cross-browser compatibility and standards compliance</td>
+            </tr>
+
+            <!-- Essential Utilities -->
+            <tr>
+                <td>axios</td>
+                <td>^1.6.2</td>
+                <td>Secure Promise-based HTTP client with built-in XSRF protection for safe API communication</td>
+            </tr>
+            <tr>
+                <td>react-icons</td>
+                <td>^5.5.0</td>
+                <td>Optimized SVG icon distribution to reduce bundle size and external asset dependencies</td>
+            </tr>
+            <tr>
+                <td>dompurify</td>
+                <td>^3.3.1</td>
+                <td>Advanced HTML sanitization library to strictly prevent Cross-Site Scripting (XSS) vulnerabilities
+                </td>
+            </tr>
+
+            <!-- UI Components & Animation -->
+            <tr>
+                <td>framer-motion</td>
+                <td>^12.23.26</td>
+                <td>Production-ready motion library for creating smooth, optimized animations in React</td>
+            </tr>
+            <tr>
+                <td>react-hot-toast</td>
+                <td>^2.4.1</td>
+                <td>Minimalist, optimized notification library for reliable user feedback</td>
+            </tr>
+
+            <!-- Developer Tools & Types -->
+            <tr>
+                <td>@types/react</td>
+                <td>^18.2.43</td>
+                <td>Type definitions ensuring type safety and reducing runtime errors during development</td>
+            </tr>
+            <tr>
+                <td>@types/react-dom</td>
+                <td>^18.2.17</td>
+                <td>Type checks for DOM interactions to prevent type-related vulnerabilities</td>
+            </tr>
+            <tr>
+                <td>@vitejs/plugin-react</td>
+                <td>^4.2.1</td>
+                <td>Optimized Vite plugin enabling fast, secure Hot Module Replacement for React</td>
+            </tr>
+            <tr>
+                <td>terser</td>
+                <td>^5.46.0</td>
+                <td>JavaScript parser and mangler for code minification and obfuscation to reduce attack surface</td>
+            </tr>
+
+            <!-- Feature Specific: Maps -->
+            <tr>
+                <td>react-leaflet</td>
+                <td>^4.2.1</td>
+                <td>React components for safe and declarative integration of Leaflet maps</td>
+            </tr>
+            <tr>
+                <td>leaflet</td>
+                <td>^1.9.4</td>
+                <td>Lightweight, secure open-source library for rendering interactive mobile-friendly maps</td>
+            </tr>
+
+            <!-- Feature Specific: 3D Graphics -->
+            <tr>
+                <td>@react-three/fiber</td>
+                <td>^8.15.11</td>
+                <td>Secure and performant 3D graphics rendering engine for React applications</td>
+            </tr>
+            <tr>
+                <td>@react-three/drei</td>
+                <td>^9.88.13</td>
+                <td>Optimized helpers and abstractions for secure and efficient 3D rendering with React Three Fiber</td>
+            </tr>
+            <tr>
+                <td>three</td>
+                <td>^0.158.0</td>
+                <td>Standard 3D library providing a stable foundation for WebGL graphics</td>
+            </tr>
+
+            <!-- Feature Specific: Charts & Others -->
+            <tr>
+                <td>recharts</td>
+                <td>^2.10.3</td>
+                <td>Reliable and composable charting library for safe data visualization</td>
+            </tr>
+            <tr>
+                <td>lottie-react</td>
+                <td>^2.4.1</td>
+                <td>Safe and efficient React component for rendering high-performance vector animations</td>
+            </tr>
+            <tr>
+                <td>@marsidev/react-turnstile</td>
+                <td>^1.4.1</td>
+                <td>Cloudflare Turnstile integration for robust bot protection and abuse prevention</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+
+</html>

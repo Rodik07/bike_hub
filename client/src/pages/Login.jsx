@@ -7,6 +7,7 @@ import { FaSignInAlt, FaEnvelope, FaLock, FaMotorcycle, FaGoogle, FaEye, FaEyeSl
 import LoadingSpinner from '../components/LoadingSpinner';
 import OTPVerification from '../components/OTPVerification';
 import { fadeInUp, scaleIn } from '../utils/animations';
+import { showSuccessToast, showErrorToast } from '../utils/toastUtils';
 
 const Login = () => {
   const [searchParams] = useSearchParams();
@@ -25,11 +26,13 @@ const Login = () => {
   useEffect(() => {
     const error = searchParams.get('error');
     if (error === 'oauth_not_configured') {
-      toast.error('Google OAuth is not configured. Please use email/password login.');
+      toast.dismiss();
+      showErrorToast('Google OAuth is not configured. Please use email/password login.');
       // Clean up URL
       navigate('/login', { replace: true });
     } else if (error === 'oauth_failed') {
-      toast.error('Google authentication failed. Please try again.');
+      toast.dismiss();
+      showErrorToast('Google authentication failed. Please try again.');
       navigate('/login', { replace: true });
     }
   }, [searchParams, navigate]);
@@ -51,9 +54,15 @@ const Login = () => {
       // Show OTP modal
       setOtpEmail(result.email);
       setShowOTPModal(true);
-      toast.success('Verification code sent to your email!');
+      toast.dismiss();
+      showSuccessToast('Verification code sent to your email!');
     } else if (!result.success) {
-      toast.error(result.message);
+      toast.dismiss();
+      if (result.temporaryPasswordExpired) {
+        showErrorToast('Your temporary password has expired. Please use "Forgot Password" to reset it.');
+      } else {
+        showErrorToast(result.message);
+      }
     }
 
     setLoading(false);
@@ -64,8 +73,26 @@ const Login = () => {
 
     if (result.success) {
       setShowOTPModal(false);
-      toast.success('Login successful!');
-      navigate('/');
+      toast.dismiss();
+
+      const userData = result.user;
+
+      // Determine redirect path based on role
+      let redirectPath = '/';
+      if (userData.role === 'dealer') {
+        redirectPath = '/dealer';
+      } else if (userData.role === 'admin') {
+        redirectPath = '/admin';
+      }
+
+      // Check if password change is required
+      if (userData.mustChangePassword) {
+        showSuccessToast('Login successful! Please change your temporary password.');
+      } else {
+        showSuccessToast('Login successful!');
+      }
+
+      navigate(redirectPath);
     } else {
       throw new Error(result.message);
     }
@@ -75,7 +102,8 @@ const Login = () => {
     const result = await resendOTP(otpEmail);
 
     if (result.success) {
-      toast.success('New verification code sent!');
+      toast.dismiss();
+      showSuccessToast('New verification code sent!');
     } else {
       throw new Error(result.message);
     }
@@ -88,9 +116,8 @@ const Login = () => {
   };
 
   const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-    // Directly redirect - let the server handle the error if OAuth isn't configured
-    window.location.href = `${apiUrl}/api/auth/google`;
+        // Use relative URL - Vite proxy handles it
+    window.location.href = '/api/auth/google';
   };
 
   const containerRef = useRef(null);
@@ -209,6 +236,12 @@ const Login = () => {
                 </button>
               </div>
             </motion.div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <Link to="/forgot-password" className="text-sm font-semibold text-primary-600 hover:text-accent-600 transition-colors">
+              Forgot Password?
+            </Link>
           </div>
 
           <div className="space-y-3">

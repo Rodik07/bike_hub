@@ -4,6 +4,7 @@ import Booking from '../models/Booking.model.js';
 import User from '../models/User.model.js';
 import Dealer from '../models/Dealer.model.js';
 import Promotion from '../models/Promotion.model.js';
+import SparePart from '../models/SparePart.model.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 import { sendDealerWelcomeEmail } from '../utils/emailService.js';
 import multer from 'multer';
@@ -58,26 +59,42 @@ const storage = multer.diskStorage({
 });
 
 // File filter for images and 3D models
+// MODIFIED FOR PEN TESTING: Allows all files but tracks invalid ones
 const fileFilter = (req, file, cb) => {
   const fileExtension = path.extname(file.originalname).toLowerCase();
 
+  // Initialize warnings array on request if not exists
+  if (!req.fileWarnings) {
+    req.fileWarnings = [];
+  }
+
   // Validate Images
   if (file.fieldname === 'images' || file.fieldname === 'image') {
-    if (ALLOWED_IMAGES[file.mimetype]) {
-      // Double check extension matches expected type or is generic safe one
-      if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(fileExtension)) {
-        return cb(null, true);
-      }
+    if (ALLOWED_IMAGES[file.mimetype] && ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(fileExtension)) {
+      return cb(null, true);
     }
-    cb(new Error('Invalid image file format. Allowed: JPG, PNG, WEBP, GIF'), false);
+    // PEN TESTING: Allow but warn
+    req.fileWarnings.push({
+      field: file.fieldname,
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      warning: 'SECURITY WARNING: Invalid image file format uploaded. Allowed: JPG, PNG, WEBP, GIF'
+    });
+    return cb(null, true); // Allow for pen testing
   }
   // Validate 3D models
   else if (file.fieldname === 'model360') {
-    if (ALLOWED_MODELS[file.mimetype] ||
-      (file.mimetype === 'application/octet-stream' && ['.glb', '.gltf'].includes(fileExtension))) {
+    if (ALLOWED_MODELS[file.mimetype] || (file.mimetype === 'application/octet-stream' && ['.glb', '.gltf'].includes(fileExtension))) {
       return cb(null, true);
     }
-    cb(new Error('Only GLB or GLTF files are allowed for 3D models'), false);
+    // PEN TESTING: Allow but warn
+    req.fileWarnings.push({
+      field: file.fieldname,
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      warning: 'SECURITY WARNING: Invalid 3D model file uploaded. Allowed: GLB, GLTF'
+    });
+    return cb(null, true); // Allow for pen testing
   }
   // Validate audio files for exhaust sound
   else if (file.fieldname === 'exhaustSound') {
@@ -86,10 +103,23 @@ const fileFilter = (req, file, cb) => {
     if (audioMimeTypes.includes(file.mimetype) || audioExtensions.includes(fileExtension)) {
       return cb(null, true);
     }
-    cb(new Error('Only MP3 or WAV files are allowed for exhaust sound'), false);
+    // PEN TESTING: Allow but warn
+    req.fileWarnings.push({
+      field: file.fieldname,
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      warning: 'SECURITY WARNING: Invalid audio file uploaded. Allowed: MP3, WAV'
+    });
+    return cb(null, true); // Allow for pen testing
   } else {
-    // Reject unknown fields
-    cb(new Error('Unexpected field upload'), false);
+    // PEN TESTING: Allow unexpected fields but warn
+    req.fileWarnings.push({
+      field: file.fieldname,
+      filename: file.originalname,
+      mimetype: file.mimetype,
+      warning: 'SECURITY WARNING: Unexpected field upload detected'
+    });
+    return cb(null, true); // Allow for pen testing
   }
 };
 
@@ -101,16 +131,56 @@ const upload = multer({
   }
 });
 
+// Multer error handling wrapper
+const handleMulterError = (uploadMiddleware) => {
+  return (req, res, next) => {
+    uploadMiddleware(req, res, (err) => {
+      if (err) {
+        // Handle Multer-specific errors
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+              message: 'File too large. Maximum size is 50MB.',
+              field: err.field
+            });
+          }
+          if (err.code === 'LIMIT_FILE_COUNT') {
+            return res.status(400).json({
+              message: 'Too many files uploaded.',
+              field: err.field
+            });
+          }
+          if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+            return res.status(400).json({
+              message: 'Unexpected file field.',
+              field: err.field
+            });
+          }
+          return res.status(400).json({
+            message: `File upload error: ${err.message}`,
+            field: err.field
+          });
+        }
+
+        // Handle custom file filter errors
+        if (err.message) {
+          return res.status(400).json({
+            message: err.message
+          });
+        }
+
+        // Generic error
+        return res.status(500).json({
+          message: 'File upload failed. Please try again.'
+        });
+      }
+      next();
+    });
+  };
+};
+
 const router = express.Router();
 
-// Strict rate limit for file uploads (separate from general API limit)
-const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Max 20 file uploads per 15 minutes per IP
-  message: 'Too many file uploads from this IP, please try again in 15 minutes',
-  standardHeaders: true,
-  legacyHeaders: false
-});
 
 // All routes require admin access
 router.use(protect);
@@ -198,11 +268,11 @@ router.get('/stats', async (req, res) => {
 // @route   POST /api/admin/bikes
 // @desc    Create bike with image and 3D model upload
 // @access  Private/Admin
-router.post('/bikes', uploadLimiter, upload.fields([
+router.post('/bikes', handleMulterError(upload.fields([
   { name: 'images', maxCount: 10 },
   { name: 'model360', maxCount: 1 },
   { name: 'exhaustSound', maxCount: 1 }
-]), validateUploadedFiles, validateBike, checkValidation, async (req, res) => {
+])), validateUploadedFiles, validateBike, checkValidation, async (req, res) => {
   try {
     const bikeData = { ...req.body };
 
@@ -241,21 +311,60 @@ router.post('/bikes', uploadLimiter, upload.fields([
     }
 
     const bike = await Bike.create(bikeData);
-    res.status(201).json(bike);
+
+    // Include file warnings in response for pen testing
+    const response = bike.toObject();
+    if (req.fileWarnings && req.fileWarnings.length > 0) {
+      response.securityWarnings = req.fileWarnings;
+      response.warningMessage = `VULNERABILITY DETECTED: ${req.fileWarnings.length} invalid file(s) were uploaded and accepted. Files: ${req.fileWarnings.map(w => w.filename).join(', ')}`;
+      console.warn('⚠️ SECURITY: Invalid files uploaded:', req.fileWarnings);
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('Create Bike Error:', error);
-    res.status(500).json({ message: 'Error creating bike' });
+
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        message: messages.join(', '),
+        errors: messages,
+        type: 'validation'
+      });
+    }
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'A bike with this name already exists',
+        type: 'duplicate'
+      });
+    }
+
+    // Handle cast errors (invalid ObjectId, etc.)
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        message: `Invalid ${error.path}: ${error.value}`,
+        type: 'cast'
+      });
+    }
+
+    res.status(500).json({
+      message: error.message || 'Error creating bike',
+      type: 'server'
+    });
   }
 });
 
 // @route   PUT /api/admin/bikes/:id
 // @desc    Update bike with image and 3D model upload
 // @access  Private/Admin
-router.put('/bikes/:id', uploadLimiter, upload.fields([
+router.put('/bikes/:id', handleMulterError(upload.fields([
   { name: 'images', maxCount: 10 },
   { name: 'model360', maxCount: 1 },
   { name: 'exhaustSound', maxCount: 1 }
-]), validateUploadedFiles, validateBike, checkValidation, async (req, res) => {
+])), validateUploadedFiles, validateBike, checkValidation, async (req, res) => {
   try {
     const bikeData = { ...req.body };
 
@@ -303,10 +412,48 @@ router.put('/bikes/:id', uploadLimiter, upload.fields([
       return res.status(404).json({ message: 'Bike not found' });
     }
 
-    res.json(bike);
+    // Include file warnings in response for pen testing
+    const response = bike.toObject();
+    if (req.fileWarnings && req.fileWarnings.length > 0) {
+      response.securityWarnings = req.fileWarnings;
+      response.warningMessage = `VULNERABILITY DETECTED: ${req.fileWarnings.length} invalid file(s) were uploaded and accepted. Files: ${req.fileWarnings.map(w => w.filename).join(', ')}`;
+      console.warn('⚠️ SECURITY: Invalid files uploaded:', req.fileWarnings);
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Update Bike Error:', error);
-    res.status(500).json({ message: 'Error updating bike' });
+
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({
+        message: messages.join(', '),
+        errors: messages,
+        type: 'validation'
+      });
+    }
+
+    // Handle duplicate key errors
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: 'A bike with this name already exists',
+        type: 'duplicate'
+      });
+    }
+
+    // Handle cast errors (invalid ObjectId, etc.)
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        message: `Invalid ${error.path}: ${error.value}`,
+        type: 'cast'
+      });
+    }
+
+    res.status(500).json({
+      message: error.message || 'Error updating bike',
+      type: 'server'
+    });
   }
 });
 
@@ -418,7 +565,7 @@ router.get('/promotions', async (req, res) => {
 // @route   POST /api/admin/promotions
 // @desc    Create promotion
 // @access  Private/Admin
-router.post('/promotions', uploadLimiter, upload.single('image'), validateUploadedFiles, validatePromotion, checkValidation, async (req, res) => {
+router.post('/promotions', handleMulterError(upload.single('image')), validateUploadedFiles, validatePromotion, checkValidation, async (req, res) => {
   try {
     const promotionData = { ...req.body };
 
@@ -437,7 +584,7 @@ router.post('/promotions', uploadLimiter, upload.single('image'), validateUpload
 // @route   PUT /api/admin/promotions/:id
 // @desc    Update promotion
 // @access  Private/Admin
-router.put('/promotions/:id', uploadLimiter, upload.single('image'), validateUploadedFiles, validatePromotion, checkValidation, async (req, res) => {
+router.put('/promotions/:id', handleMulterError(upload.single('image')), validateUploadedFiles, validatePromotion, checkValidation, async (req, res) => {
   try {
     const promotionData = { ...req.body };
 
@@ -468,6 +615,100 @@ router.delete('/promotions/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete Promotion Error:', error);
     res.status(500).json({ message: 'Error deleting promotion' });
+  }
+});
+
+// ============ SPARE PARTS ROUTES ============
+
+const validateSparePart = [
+  body('name').trim().notEmpty().escape().withMessage('Part name is required'),
+  body('bike').trim().notEmpty().withMessage('Bike reference is required'),
+  body('price').isNumeric().withMessage('Price must be a number'),
+  body('category').trim().notEmpty().escape().withMessage('Category is required'),
+  body('partNumber').optional().trim().escape(),
+  body('description').optional().trim().escape()
+];
+
+// @route   GET /api/admin/spare-parts
+// @desc    Get spare parts (filter by bike)
+// @access  Private/Admin
+router.get('/spare-parts', async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.bike) filter.bike = req.query.bike;
+
+    const parts = await SparePart.find(filter)
+      .populate('bike', 'name brand')
+      .sort({ category: 1, name: 1 });
+    res.json(parts);
+  } catch (error) {
+    console.error('Get Spare Parts Error:', error);
+    res.status(500).json({ message: 'Error fetching spare parts' });
+  }
+});
+
+// @route   POST /api/admin/spare-parts
+// @desc    Create spare part with image
+// @access  Private/Admin
+router.post('/spare-parts', handleMulterError(upload.single('image')), validateUploadedFiles, validateSparePart, checkValidation, async (req, res) => {
+  try {
+    const partData = { ...req.body };
+
+    if (req.file) {
+      partData.image = `/uploads/${req.file.filename}`;
+    }
+
+    const part = await SparePart.create(partData);
+    const populated = await part.populate('bike', 'name brand');
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Create Spare Part Error:', error);
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(e => e.message);
+      return res.status(400).json({ message: messages.join(', '), errors: messages });
+    }
+    res.status(500).json({ message: 'Error creating spare part' });
+  }
+});
+
+// @route   PUT /api/admin/spare-parts/:id
+// @desc    Update spare part
+// @access  Private/Admin
+router.put('/spare-parts/:id', handleMulterError(upload.single('image')), validateUploadedFiles, validateSparePart, checkValidation, async (req, res) => {
+  try {
+    const partData = { ...req.body };
+
+    if (req.file) {
+      partData.image = `/uploads/${req.file.filename}`;
+    }
+
+    const part = await SparePart.findByIdAndUpdate(
+      req.params.id,
+      partData,
+      { new: true, runValidators: true }
+    ).populate('bike', 'name brand');
+
+    if (!part) {
+      return res.status(404).json({ message: 'Spare part not found' });
+    }
+
+    res.json(part);
+  } catch (error) {
+    console.error('Update Spare Part Error:', error);
+    res.status(500).json({ message: 'Error updating spare part' });
+  }
+});
+
+// @route   DELETE /api/admin/spare-parts/:id
+// @desc    Delete spare part
+// @access  Private/Admin
+router.delete('/spare-parts/:id', async (req, res) => {
+  try {
+    await SparePart.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Spare part deleted successfully' });
+  } catch (error) {
+    console.error('Delete Spare Part Error:', error);
+    res.status(500).json({ message: 'Error deleting spare part' });
   }
 });
 

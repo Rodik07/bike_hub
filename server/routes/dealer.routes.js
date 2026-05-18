@@ -4,6 +4,7 @@ import Dealer from '../models/Dealer.model.js';
 import Bike from '../models/Bike.model.js';
 import DealerBikeListing from '../models/DealerBikeListing.model.js';
 import Booking from '../models/Booking.model.js';
+import SparePart from '../models/SparePart.model.js';
 import { protect, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
@@ -197,7 +198,10 @@ router.get('/my-listings', authorize('dealer', 'admin'), async (req, res) => {
       return res.status(404).json({ message: 'Dealer not found' });
     }
 
-    const listings = await DealerBikeListing.find({ dealer: dealer._id })
+    const listings = await DealerBikeListing.find({
+      dealer: dealer._id,
+      isActive: true
+    })
       .populate('bike', 'name brand category price images')
       .sort({ createdAt: -1 });
 
@@ -343,6 +347,138 @@ router.get('/bookings', authorize('dealer', 'admin'), async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ============ SPARE PARTS ROUTES ============
+
+// @route   GET /api/dealers/spare-parts
+// @desc    Get all available spare parts with search, filter, pagination
+// @access  Private/Dealer
+router.get('/spare-parts', authorize('dealer', 'admin'), async (req, res) => {
+  try {
+    const dealer = await Dealer.findOne({ email: req.user.email });
+    if (!dealer) {
+      return res.status(404).json({ message: 'Dealer not found' });
+    }
+
+    const {
+      search = '',
+      category = '',
+      page = 1,
+      limit = 12
+    } = req.query;
+
+    // Build filter
+    const filter = { isAvailable: true };
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { partNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (category) {
+      filter.category = category;
+    }
+
+    // Get total count
+    const total = await SparePart.countDocuments(filter);
+
+    // Pagination
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    const totalPages = Math.ceil(total / limitNum);
+
+    const parts = await SparePart.find(filter)
+      .populate('bike', 'name brand')
+      .sort({ category: 1, name: 1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    // Add isListedByDealer flag to each part
+    const partsWithFlag = parts.map(part => ({
+      ...part.toObject(),
+      isListedByDealer: part.dealers.some(d => d.toString() === dealer._id.toString())
+    }));
+
+    // Get unique categories for filter dropdown
+    const categories = await SparePart.distinct('category', { isAvailable: true });
+
+    res.json({
+      parts: partsWithFlag,
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1
+      },
+      filters: {
+        categories: categories.sort()
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   GET /api/dealers/my-spare-parts
+// @desc    Get spare parts listed by this dealer
+// @access  Private/Dealer
+router.get('/my-spare-parts', authorize('dealer', 'admin'), async (req, res) => {
+  try {
+    const dealer = await Dealer.findOne({ email: req.user.email });
+    if (!dealer) {
+      return res.status(404).json({ message: 'Dealer not found' });
+    }
+
+    const parts = await SparePart.find({
+      dealers: dealer._id,
+      isAvailable: true
+    })
+      .populate('bike', 'name brand')
+      .sort({ category: 1, name: 1 });
+
+    res.json(parts);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// @route   POST /api/dealers/spare-parts/:partId/toggle
+// @desc    Toggle listing of a spare part for this dealer
+// @access  Private/Dealer
+router.post('/spare-parts/:partId/toggle', authorize('dealer', 'admin'), async (req, res) => {
+  try {
+    const dealer = await Dealer.findOne({ email: req.user.email });
+    if (!dealer) {
+      return res.status(404).json({ message: 'Dealer not found' });
+    }
+
+    const part = await SparePart.findById(req.params.partId);
+    if (!part) {
+      return res.status(404).json({ message: 'Spare part not found' });
+    }
+
+    const dealerIndex = part.dealers.findIndex(d => d.toString() === dealer._id.toString());
+
+    if (dealerIndex > -1) {
+      // Remove dealer (unlist)
+      part.dealers.splice(dealerIndex, 1);
+      await part.save();
+      res.json({ message: 'Spare part unlisted', listed: false });
+    } else {
+      // Add dealer (list)
+      part.dealers.push(dealer._id);
+      await part.save();
+      res.json({ message: 'Spare part listed', listed: true });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

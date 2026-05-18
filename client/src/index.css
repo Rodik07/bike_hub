@@ -16,24 +16,13 @@ code {
     monospace;
 }
 
-/* Leaflet map styles */
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  z-index: 1 !important;
+/* Google Maps embeds (react-google-maps/api) */
+.google-map-shell {
   position: relative;
-}
-
-/* Ensure map doesn't overlap modals */
-.leaflet-pane,
-.leaflet-map-pane,
-.leaflet-tile-pane,
-.leaflet-overlay-pane,
-.leaflet-shadow-pane,
-.leaflet-marker-pane,
-.leaflet-tooltip-pane,
-.leaflet-popup-pane {
-  z-index: 1 !important;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  z-index: 1;
 }
 
 /* Custom Animations */

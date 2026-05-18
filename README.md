@@ -55,7 +55,7 @@ PORT=5001
 NODE_ENV=development
 
 # MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/bikehub
+MONGODB_URI=mongodb://localhost:27017/bike_hub
 
 # JWT Configuration
 JWT_SECRET=your_super_secret_jwt_key_change_this_to_random_string

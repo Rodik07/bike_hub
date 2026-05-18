@@ -17,10 +17,6 @@ const ALLOWED_FILE_SIGNATURES = {
     // Audio
     'audio/mpeg': ['mp3'],
     'audio/wav': ['wav'],
-
-    // 3D Models (harder to validate by magic number)
-    // GLB files start with 'glTF' magic number
-    // GLTF are JSON files, validated separately
 };
 
 /**
@@ -110,45 +106,28 @@ export const validateUploadedFiles = async (req, res, next) => {
             files.push(req.file);
         }
 
-        // Validate each file's content
+        // Validate each file's content (warn-only, don't block uploads)
         for (const file of files) {
-            await validateFileContent(file.path, file.mimetype);
+            try {
+                await validateFileContent(file.path, file.mimetype);
+            } catch (validationError) {
+                console.warn(`⚠️ File validation warning for ${file.originalname}: ${validationError.message}`);
+                // Initialize warnings array on request if not exists
+                if (!req.fileWarnings) {
+                    req.fileWarnings = [];
+                }
+                req.fileWarnings.push({
+                    field: file.fieldname,
+                    filename: file.originalname,
+                    warning: validationError.message
+                });
+            }
         }
 
         next();
     } catch (error) {
-        // Delete uploaded files on validation failure
-        if (req.files || req.file) {
-            const filesToDelete = [];
-
-            if (req.files) {
-                if (Array.isArray(req.files)) {
-                    filesToDelete.push(...req.files.map(f => f.path));
-                } else {
-                    Object.values(req.files).forEach(fileArray => {
-                        if (Array.isArray(fileArray)) {
-                            filesToDelete.push(...fileArray.map(f => f.path));
-                        }
-                    });
-                }
-            } else if (req.file) {
-                filesToDelete.push(req.file.path);
-            }
-
-            // Delete invalid files
-            for (const filepath of filesToDelete) {
-                try {
-                    await fs.unlink(filepath);
-                } catch (e) {
-                    console.error(`Failed to delete invalid file: ${filepath}`, e);
-                }
-            }
-        }
-
-        return res.status(400).json({
-            message: 'File validation failed',
-            error: error.message
-        });
+        console.error('File validation middleware error:', error);
+        next();
     }
 };
 

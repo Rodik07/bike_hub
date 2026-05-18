@@ -2,14 +2,13 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Inquiry from '../models/Inquiry.model.js';
 import { protect } from '../middleware/auth.middleware.js';
-import { moderateAuthLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
 // @route   POST /api/inquiries
 // @desc    Create inquiry
 // @access  Private
-router.post('/', protect, moderateAuthLimiter, [
+router.post('/', protect, [
   body('subject').trim().escape().notEmpty().withMessage('Subject is required'),
   body('message').trim().escape().notEmpty().withMessage('Message is required')
 ], async (req, res) => {

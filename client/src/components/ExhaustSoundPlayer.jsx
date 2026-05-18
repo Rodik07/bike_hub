@@ -14,7 +14,7 @@ const ExhaustSoundPlayer = ({ soundUrl, bikeName }) => {
     // Construct full URL
     const fullSoundUrl = soundUrl?.startsWith('http')
         ? soundUrl
-        : `http://localhost:5001${soundUrl}`;
+        : `${soundUrl}`;
 
     useEffect(() => {
         const audio = audioRef.current;

@@ -58,7 +58,7 @@ const FeaturedBikeSection = ({ bike, index }) => {
               className="relative"
             >
               <motion.img
-                src={`http://localhost:5001${bike.images[0].url}`}
+                src={`${bike.images[0].url}`}
                 alt={bike.name}
                 className="w-full h-auto object-contain drop-shadow-2xl"
                 animate={{ y: [0, -20, 0] }}
@@ -149,7 +149,21 @@ const Home = () => {
           axios.get("/api/admin/promotions").catch(() => ({ data: [] })),
         ]);
 
-      setFeaturedBikes(featuredRes.data.slice(0, 8));
+      // Randomize featured bikes if we have more than 3–4, so the homepage
+      // doesn't always show the same ones
+      const allFeatured = Array.isArray(featuredRes.data)
+        ? featuredRes.data
+        : [];
+
+      let featuredToShow = allFeatured;
+
+      if (allFeatured.length > 4) {
+        // Shuffle and take up to 8 bikes
+        const shuffled = [...allFeatured].sort(() => Math.random() - 0.5);
+        featuredToShow = shuffled.slice(0, 8);
+      }
+
+      setFeaturedBikes(featuredToShow);
       setLatestBikes(latestRes.data.slice(0, 10));
       setBrands(brandsRes.data);
 
@@ -165,6 +179,8 @@ const Home = () => {
 
       setPromotions(promotionsRes.data.filter((p) => p.isActive).slice(0, 3));
     } catch (error) {
+      // Avoid stacking multiple identical error snackbars
+      toast.dismiss();
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
@@ -389,7 +405,7 @@ const Home = () => {
                         <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl overflow-hidden mb-4 aspect-square flex items-center justify-center p-8 relative shadow-lg hover:shadow-2xl transition-all border-2 border-transparent hover:border-primary-500">
                           {bike.images && bike.images.length > 0 ? (
                             <motion.img
-                              src={`http://localhost:5001${bike.images[0].url}`}
+                              src={`${bike.images[0].url}`}
                               alt={bike.name}
                               className="w-full h-full object-contain"
                               whileHover={{ scale: 1.1, rotate: 5 }}
@@ -513,7 +529,7 @@ const Home = () => {
                       <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl overflow-hidden mb-4 aspect-square flex items-center justify-center p-6 relative shadow-xl hover:shadow-2xl transition-all border-2 border-transparent hover:border-primary-500">
                         {bike.images && bike.images.length > 0 ? (
                           <motion.img
-                            src={`http://localhost:5001${bike.images[0].url}`}
+                            src={`${bike.images[0].url}`}
                             alt={bike.name}
                             className="w-full h-full object-contain"
                             whileHover={{ scale: 1.15, rotate: 5 }}
@@ -602,7 +618,7 @@ const Home = () => {
                       <div className="bg-gradient-to-br from-white to-gray-100 rounded-2xl overflow-hidden mb-4 aspect-video flex items-center justify-center p-8 relative shadow-lg hover:shadow-2xl transition-all border-2 border-transparent hover:border-accent-500">
                         {bike.images && bike.images.length > 0 ? (
                           <motion.img
-                            src={`http://localhost:5001${bike.images[0].url}`}
+                            src={`${bike.images[0].url}`}
                             alt={bike.name}
                             className="w-full h-full object-contain"
                             whileHover={{ scale: 1.1, rotate: -5 }}
@@ -716,7 +732,7 @@ const Home = () => {
                     <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl overflow-hidden mb-4 aspect-square flex items-center justify-center p-6 shadow-md hover:shadow-2xl transition-all border-2 border-transparent hover:border-primary-500">
                       {bike.images && bike.images.length > 0 ? (
                         <motion.img
-                          src={`http://localhost:5001${bike.images[0].url}`}
+                          src={`${bike.images[0].url}`}
                           alt={bike.name}
                           className="w-full h-full object-contain"
                           whileHover={{ scale: 1.15, rotate: 5 }}
@@ -792,7 +808,7 @@ const Home = () => {
                         {bike.images && bike.images.length > 0 && (
                           <div className="bg-gray-700 rounded-xl p-4 mb-3 aspect-square flex items-center justify-center">
                             <motion.img
-                              src={`http://localhost:5001${bike.images[0].url}`}
+                              src={`${bike.images[0].url}`}
                               alt={bike.name}
                               className="w-full h-full object-contain"
                               whileHover={{ rotate: 5 }}
@@ -826,7 +842,7 @@ const Home = () => {
                         {nextBike.images && nextBike.images.length > 0 && (
                           <div className="bg-gray-700 rounded-xl p-4 mb-3 aspect-square flex items-center justify-center">
                             <motion.img
-                              src={`http://localhost:5001${nextBike.images[0].url}`}
+                              src={`${nextBike.images[0].url}`}
                               alt={nextBike.name}
                               className="w-full h-full object-contain"
                               whileHover={{ rotate: -5 }}

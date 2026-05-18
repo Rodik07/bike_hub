@@ -176,7 +176,7 @@ const SearchAutocomplete = () => {
                     <div className="flex-shrink-0">
                       {bike.images && bike.images.length > 0 ? (
                         <img
-                          src={`http://localhost:5001${bike.images[0].url}`}
+                          src={`${bike.images[0].url}`}
                           alt={bike.name}
                           className="w-12 h-12 object-contain rounded"
                         />

@@ -11,6 +11,7 @@ import {
   FaCheckCircle
 } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { formatSlotLabel, generateBookingSlots } from '../utils/bookingSlots';
 
 const TestRideBooking = () => {
   const { bikeId } = useParams();
@@ -25,11 +26,39 @@ const TestRideBooking = () => {
   });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   useEffect(() => {
     fetchBike();
     fetchDealers();
   }, []);
+
+  useEffect(() => {
+    if (!formData.dealer || !formData.bookingDate) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    const fetchSlots = async () => {
+      try {
+        setSlotsLoading(true);
+        const { data } = await axios.get('/api/bookings/available-slots', {
+          params: { dealer: formData.dealer, date: formData.bookingDate }
+        });
+        setAvailableSlots(data.availableSlots || []);
+        if (formData.preferredTime && !data.availableSlots?.includes(formData.preferredTime)) {
+          setFormData((prev) => ({ ...prev, preferredTime: '' }));
+        }
+      } catch {
+        setAvailableSlots(generateBookingSlots());
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    fetchSlots();
+  }, [formData.dealer, formData.bookingDate]);
 
   const fetchBike = async () => {
     try {
@@ -45,7 +74,7 @@ const TestRideBooking = () => {
 
   const fetchDealers = async () => {
     try {
-      const { data } = await axios.get('/api/dealers?type=dealer');
+      const { data } = await axios.get('/api/dealers?type=showroom');
       setDealers(data);
     } catch (error) {
       toast.error('Failed to load dealers');
@@ -149,26 +178,38 @@ const TestRideBooking = () => {
           <div>
             <label className="block text-sm font-medium mb-2 flex items-center space-x-2">
               <FaClock className="text-primary-600" />
-              <span>Preferred Time *</span>
+              <span>Time Slot (15 min) *</span>
             </label>
-            <select
-              name="preferredTime"
-              required
-              value={formData.preferredTime}
-              onChange={handleChange}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500"
-            >
-              <option value="">Select time</option>
-              <option value="09:00">09:00 AM</option>
-              <option value="10:00">10:00 AM</option>
-              <option value="11:00">11:00 AM</option>
-              <option value="12:00">12:00 PM</option>
-              <option value="13:00">01:00 PM</option>
-              <option value="14:00">02:00 PM</option>
-              <option value="15:00">03:00 PM</option>
-              <option value="16:00">04:00 PM</option>
-              <option value="17:00">05:00 PM</option>
-            </select>
+            {slotsLoading ? (
+              <div className="flex justify-center py-2">
+                <LoadingSpinner size={24} inline={true} />
+              </div>
+            ) : (
+              <select
+                name="preferredTime"
+                required
+                disabled={!formData.dealer || !formData.bookingDate || availableSlots.length === 0}
+                value={formData.preferredTime}
+                onChange={handleChange}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 disabled:bg-gray-100"
+              >
+                <option value="">
+                  {!formData.dealer || !formData.bookingDate
+                    ? 'Select dealer and date first'
+                    : availableSlots.length === 0
+                      ? 'No slots available'
+                      : 'Select a 15-minute slot'}
+                </option>
+                {availableSlots.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {formatSlotLabel(slot)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              One booking per dealership per 15-minute slot.
+            </p>
           </div>
 
           <div>
@@ -188,7 +229,7 @@ const TestRideBooking = () => {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !formData.preferredTime}
             className="w-full flex items-center justify-center space-x-2 bg-primary-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all"
           >
             {submitting ? (
@@ -210,4 +251,3 @@ const TestRideBooking = () => {
 };
 
 export default TestRideBooking;
-

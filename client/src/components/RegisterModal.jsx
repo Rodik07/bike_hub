@@ -6,6 +6,7 @@ import Modal from './Modal';
 import { FaUser, FaEnvelope, FaPhone, FaLock, FaGoogle, FaEye, FaEyeSlash, FaUserPlus, FaMotorcycle } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 import LoadingSpinner from './LoadingSpinner';
+import { showSuccessToast, showErrorToast } from '../utils/toastUtils';
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [formData, setFormData] = useState({
@@ -33,19 +34,21 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     const result = await register(formData);
 
     if (result.success) {
-      toast.success('Registration successful!');
+      toast.dismiss();
+      showSuccessToast('Registration successful!');
       onClose();
       navigate('/');
     } else {
-      toast.error(result.message);
+      toast.dismiss();
+      showErrorToast(result.message);
     }
 
     setLoading(false);
   };
 
   const handleGoogleLogin = () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-    window.location.href = `${apiUrl}/api/auth/google`;
+    // Use relative URL - Vite proxy handles it
+    window.location.href = '/api/auth/google';
   };
 
   return (

@@ -6,7 +6,6 @@ import { generateToken } from '../utils/generateToken.js';
 import { protect } from '../middleware/auth.middleware.js';
 import crypto from 'crypto';
 import { sendPasswordResetEmail, sendOTPEmail } from '../utils/emailService.js';
-import { strictAuthLimiter, moderateAuthLimiter } from '../middleware/rateLimiter.middleware.js';
 
 const router = express.Router();
 
@@ -15,85 +14,14 @@ const generateOTP = () => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// @route   POST /api/auth/verify-captcha
-// @desc    Verify Cloudflare Turnstile CAPTCHA token
-// @access  Public
-router.post('/verify-captcha', async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    if (!token) {
-      return res.status(400).json({ success: false, message: 'CAPTCHA token is required' });
-    }
-
-    const secretKey = process.env.TURNSTILE_SECRET_KEY;
-
-    if (!secretKey) {
-      console.warn('⚠️ TURNSTILE_SECRET_KEY not configured. Skipping CAPTCHA verification.');
-      return res.json({ success: true, message: 'CAPTCHA verification skipped (not configured)' });
-    }
-
-    // Verify token with Cloudflare with timeout
-    const verifyUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-    try {
-      const verifyResponse = await fetch(verifyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          secret: secretKey,
-          response: token,
-        }),
-        signal: controller.signal
-      });
-
-      const verifyData = await verifyResponse.json();
-
-      if (verifyData.success) {
-        res.json({ success: true, message: 'CAPTCHA verified successfully' });
-      } else {
-        res.status(400).json({
-          success: false,
-          message: 'CAPTCHA verification failed',
-          errors: verifyData['error-codes']
-        });
-      }
-    } catch (fetchError) {
-      clearTimeout(timeoutId);
-
-      // In development, allow CAPTCHA to pass if Cloudflare is unreachable
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️ CAPTCHA network error. Allowing in development mode.');
-        return res.json({ success: true, message: 'CAPTCHA verified (dev mode fallback)' });
-      }
-
-      res.status(500).json({ success: false, message: 'Network error verifying CAPTCHA' });
-    }
-  } catch (error) {
-    console.error('CAPTCHA verification error:', error.message);
-
-    // Fallback for development
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('⚠️ CAPTCHA verification error. Allowing in development mode.');
-      return res.json({ success: true, message: 'CAPTCHA verified (dev mode fallback)' });
-    }
-
-    res.status(500).json({ success: false, message: 'CAPTCHA verification failed' });
-  }
-});
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', strictAuthLimiter, [
+router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Please provide a valid email'),
-  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('phone').optional().trim()
 ], async (req, res) => {
   try {
@@ -102,7 +30,10 @@ router.post('/register', strictAuthLimiter, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { name, email, password, phone, role } = req.body;
+    const { name, email, password: encodedPassword, phone, role } = req.body;
+
+    // Decode Base64 password
+    const password = Buffer.from(encodedPassword, 'base64').toString('utf-8');
 
     // Check if user exists
     const userExists = await User.findOne({ email });
@@ -136,7 +67,7 @@ router.post('/register', strictAuthLimiter, [
 // @route   POST /api/auth/login
 // @desc    Login user - Step 1: Verify credentials and send OTP
 // @access  Public
-router.post('/login', strictAuthLimiter, [
+router.post('/login', [
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
@@ -146,7 +77,10 @@ router.post('/login', strictAuthLimiter, [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password } = req.body;
+    const { email, password: encodedPassword } = req.body;
+
+    // Decode Base64 password
+    const password = Buffer.from(encodedPassword, 'base64').toString('utf-8');
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -162,23 +96,37 @@ router.post('/login', strictAuthLimiter, [
       });
     }
 
+    // Check if temporary password has expired without being changed
+    if (user.mustChangePassword && user.temporaryPasswordExpiry && user.temporaryPasswordExpiry < new Date()) {
+      return res.status(403).json({
+        message: 'Your temporary password has expired. Please use "Forgot Password" to get a new one.',
+        temporaryPasswordExpired: true
+      });
+    }
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       // Increment login attempts
       user.loginAttempts = (user.loginAttempts || 0) + 1;
+      const maxAttempts = 5;
+      const attemptsRemaining = maxAttempts - user.loginAttempts;
 
       // Lock account after 5 failed attempts for 30 minutes
-      if (user.loginAttempts >= 5) {
+      if (user.loginAttempts >= maxAttempts) {
         user.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
         await user.save();
         return res.status(423).json({
           message: 'Too many failed login attempts. Account locked for 30 minutes.',
-          lockUntil: user.lockUntil
+          lockUntil: user.lockUntil,
+          attemptsRemaining: 0
         });
       }
 
       await user.save();
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({
+        message: `Invalid password. ${attemptsRemaining} ${attemptsRemaining === 1 ? 'try' : 'tries'} remaining before account lock.`,
+        attemptsRemaining: attemptsRemaining
+      });
     }
 
     // Reset login attempts on successful password verification
@@ -223,7 +171,7 @@ router.post('/login', strictAuthLimiter, [
 // @route   POST /api/auth/verify-otp
 // @desc    Verify OTP - Step 2: Complete login with OTP
 // @access  Public
-router.post('/verify-otp', strictAuthLimiter, [
+router.post('/verify-otp', [
   body('email').isEmail().withMessage('Please provide a valid email'),
   body('otp').notEmpty().withMessage('OTP is required').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits')
 ], async (req, res) => {
@@ -296,6 +244,7 @@ router.post('/verify-otp', strictAuthLimiter, [
       role: user.role,
       dealerId: user.dealerId,
       mustChangePassword,
+      temporaryPasswordExpiry: user.temporaryPasswordExpiry || null,
       token: generateToken(user._id)
     });
   } catch (error) {
@@ -306,7 +255,7 @@ router.post('/verify-otp', strictAuthLimiter, [
 // @route   POST /api/auth/resend-otp
 // @desc    Resend OTP
 // @access  Public
-router.post('/resend-otp', moderateAuthLimiter, [
+router.post('/resend-otp', [
   body('email').isEmail().withMessage('Please provide a valid email')
 ], async (req, res) => {
   try {
@@ -430,7 +379,7 @@ router.put('/change-password', protect, [
 // @route   POST /api/auth/forgot-password
 // @desc    Send password reset email
 // @access  Public
-router.post('/forgot-password', moderateAuthLimiter, [
+router.post('/forgot-password', [
   body('email').isEmail().withMessage('Please provide a valid email')
 ], async (req, res) => {
   try {
@@ -469,7 +418,7 @@ router.post('/forgot-password', moderateAuthLimiter, [
 // @route   POST /api/auth/reset-password
 // @desc    Reset password with token
 // @access  Public
-router.post('/reset-password', moderateAuthLimiter, [
+router.post('/reset-password', [
   body('token').notEmpty().withMessage('Reset token is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
 ], async (req, res) => {
@@ -535,7 +484,7 @@ router.get(
     }
     // Only use passport.authenticate if strategy is registered
     if (passport._strategies && passport._strategies.google) {
-      passport.authenticate('google', { session: false, failureRedirect: '/login?error=oauth_failed' })(req, res, next);
+      passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed` })(req, res, next);
     } else {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
       res.redirect(`${frontendUrl}/login?error=oauth_not_configured`);
@@ -580,6 +529,32 @@ router.get(
     }
   }
 );
+
+// @route   GET /api/auth/user-by-dealer/:dealerId
+// @desc    Find the user account linked to a dealer (for chat)
+// @access  Private
+router.get('/user-by-dealer/:dealerId', protect, async (req, res) => {
+  try {
+    // Try finding by dealerId field first
+    let user = await User.findOne({ dealerId: req.params.dealerId }).select('_id name email avatar');
+
+    if (!user) {
+      // Fallback: look up the Dealer record and find user by matching email
+      const Dealer = (await import('../models/Dealer.model.js')).default;
+      const dealer = await Dealer.findById(req.params.dealerId);
+      if (dealer) {
+        user = await User.findOne({ email: dealer.email, role: 'dealer' }).select('_id name email avatar');
+      }
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'Dealer user not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 export default router;
 

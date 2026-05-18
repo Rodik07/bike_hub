@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import OTPVerification from '../components/OTPVerification';
+import { showSuccessToast, showErrorToast, showInfoToast } from '../utils/toastUtils';
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -24,13 +25,15 @@ const OAuthCallback = () => {
   useEffect(() => {
     const handleOAuthCallback = async () => {
       if (error === 'oauth_not_configured') {
-        toast.error('Google OAuth is not configured. Please use email/password login.');
+        toast.dismiss();
+        showErrorToast('Google OAuth is not configured. Please use email/password login.');
         navigate('/login');
         return;
       }
 
       if (error) {
-        toast.error('OAuth authentication failed. Please try again.');
+        toast.dismiss();
+        showErrorToast('OAuth authentication failed. Please try again.');
         navigate('/login');
         return;
       }
@@ -40,7 +43,8 @@ const OAuthCallback = () => {
         setOtpEmail(email);
         setUserName(name || '');
         setShowOTPModal(true);
-        toast.success(`Verification code sent to ${email}`);
+        toast.dismiss();
+        showSuccessToast(`Verification code sent to ${email}`);
         return;
       }
 
@@ -51,8 +55,8 @@ const OAuthCallback = () => {
           localStorage.setItem('token', token);
 
           // Fetch user data
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
-          const response = await fetch(`${apiUrl}/api/auth/me`, {
+          // Use relative URL - Vite proxy handles it
+          const response = await fetch('/api/auth/me', {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -61,7 +65,8 @@ const OAuthCallback = () => {
           if (response.ok) {
             const userData = await response.json();
             setUserFromToken(userData, token);
-            toast.success('Login successful!');
+            toast.dismiss();
+            showSuccessToast('Login successful!');
             navigate('/');
           } else {
             throw new Error('Failed to fetch user data');
@@ -72,7 +77,8 @@ const OAuthCallback = () => {
           navigate('/login');
         }
       } else if (!otpRequired) {
-        toast.error('No authentication token received.');
+        toast.dismiss();
+        showErrorToast('No authentication token received.');
         navigate('/login');
       }
     };
@@ -85,8 +91,25 @@ const OAuthCallback = () => {
 
     if (result.success) {
       setShowOTPModal(false);
-      toast.success(`Login successful via ${provider || 'OAuth'}!`);
-      navigate('/');
+      toast.dismiss();
+
+      const userData = result.user;
+
+      // Determine redirect path based on role
+      let redirectPath = '/';
+      if (userData.role === 'dealer') {
+        redirectPath = '/dealer';
+      } else if (userData.role === 'admin') {
+        redirectPath = '/admin';
+      }
+
+      if (userData.mustChangePassword) {
+        showSuccessToast('Login successful! Please change your temporary password.');
+      } else {
+        showSuccessToast(`Login successful via ${provider || 'OAuth'}!`);
+      }
+
+      navigate(redirectPath);
     } else {
       throw new Error(result.message);
     }
@@ -96,7 +119,8 @@ const OAuthCallback = () => {
     const result = await resendOTP(otpEmail);
 
     if (result.success) {
-      toast.success('New verification code sent!');
+      toast.dismiss();
+      showSuccessToast('New verification code sent!');
     } else {
       throw new Error(result.message);
     }
@@ -104,7 +128,8 @@ const OAuthCallback = () => {
 
   const handleCancelOTP = () => {
     setShowOTPModal(false);
-    toast('OAuth login cancelled.', { icon: 'ℹ️' });
+    toast.dismiss();
+    showInfoToast('OAuth login cancelled.', { icon: 'ℹ️' });
     navigate('/login');
   };
 

@@ -49,7 +49,9 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     console.log('🔐 [AuthContext] Attempting login for:', email);
     try {
-      const { data } = await axios.post('/api/auth/login', { email, password });
+      // Encode password in Base64 before sending
+      const encodedPassword = btoa(password);
+      const { data } = await axios.post('/api/auth/login', { email, password: encodedPassword });
       console.log('✅ [AuthContext] Login step 1 successful - OTP sent');
 
       // Login now returns OTP sent status instead of token
@@ -67,7 +69,8 @@ export const AuthProvider = ({ children }) => {
       });
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed'
+        message: error.response?.data?.message || 'Login failed',
+        temporaryPasswordExpired: error.response?.data?.temporaryPasswordExpired || false
       };
     }
   };
@@ -76,15 +79,16 @@ export const AuthProvider = ({ children }) => {
     console.log('🔐 [AuthContext] Verifying OTP for:', email);
     try {
       const { data } = await axios.post('/api/auth/verify-otp', { email, otp });
+      const { token, ...userProfile } = data;
       console.log('✅ [AuthContext] OTP verification successful:', {
-        userId: data._id,
-        email: data.email,
-        role: data.role
+        userId: userProfile._id,
+        email: userProfile.email,
+        role: userProfile.role
       });
-      localStorage.setItem('token', data.token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      setUser(data);
-      return { success: true, user: data };
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(userProfile);
+      return { success: true, user: userProfile };
     } catch (error) {
       console.error('❌ [AuthContext] OTP verification failed:', {
         message: error.message,
@@ -119,10 +123,16 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const { data } = await axios.post('/api/auth/register', userData);
-      localStorage.setItem('token', data.token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-      setUser(data);
+      // Encode password in Base64 before sending
+      const encodedUserData = {
+        ...userData,
+        password: btoa(userData.password)
+      };
+      const { data } = await axios.post('/api/auth/register', encodedUserData);
+      const { token, ...userProfile } = data;
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setUser(userProfile);
       return { success: true };
     } catch (error) {
       return {

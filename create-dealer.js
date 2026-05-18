@@ -6,7 +6,7 @@
  * 2. Run: node create-dealer.js [email] [password] [name]
  * 
  * Examples:
- * node create-dealer.js dealer@bikehub.com dealer123 "Dealer Name"
+ * node create-dealer.js dealer@bike_hub.com dealer123 "Dealer Name"
  * 
  * Note: After creating the dealer user, you also need to create a dealer record
  * in the dealers collection with the same email address.
@@ -21,7 +21,7 @@ dotenv.config({ path: './server/.env' });
 
 const createDealer = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/bikehub');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/bike_hub');
     console.log('✅ Connected to MongoDB\n');
 
     const email = process.argv[2];
@@ -31,7 +31,7 @@ const createDealer = async () => {
     if (!email || !password) {
       console.log('Usage: node create-dealer.js <email> <password> [name]');
       console.log('\nExample:');
-      console.log('  node create-dealer.js dealer@bikehub.com dealer123 "Dealer Name"');
+      console.log('  node create-dealer.js dealer@bike_hub.com dealer123 "Dealer Name"');
       process.exit(1);
     }
     

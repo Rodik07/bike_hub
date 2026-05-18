@@ -144,6 +144,32 @@ const AdminBikeManagement = () => {
     setImagePreviews(previews);
   };
 
+  const validateField = (name, value) => {
+    // Basic Fields
+    if (['name', 'brand', 'category', 'description'].includes(name)) {
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        toast.error(`${name.charAt(0).toUpperCase() + name.slice(1)} is required`);
+        return false;
+      }
+    }
+
+    // Numeric Fields (Main)
+    if (['price', 'exShowroomPrice'].includes(name)) {
+      if (value && Number(value) < 0) {
+        toast.error(`${name === 'exShowroomPrice' ? 'Ex-Showroom Price' : 'Price'} must be a positive number`);
+        return false;
+      }
+    }
+
+    // Numeric Specification Fields (Common ones)
+    if (['displacement', 'maxPower', 'maxTorque', 'topSpeed', 'mileage', 'fuelCapacity'].includes(name)) {
+      // Check if value contains non-numeric chars (ignoring units if user types them, but ideally they shouldn't)
+      // Assuming pure numbers or basic validation
+    }
+
+    return true;
+  };
+
   const removeImage = (index) => {
     // Clean up blob URL if it's a new upload
     if (imagePreviews[index] && imagePreviews[index].startsWith('blob:')) {
@@ -215,18 +241,30 @@ const AdminBikeManagement = () => {
 
     try {
       if (editingBike) {
-        await axios.put(`/api/admin/bikes/${editingBike._id}`, formDataToSend, {
+        const response = await axios.put(`/api/admin/bikes/${editingBike._id}`, formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
+        // Show security warnings for pen testing
+        if (response.data.securityWarnings) {
+          response.data.securityWarnings.forEach(warn => {
+            toast.error(`⚠️ ${warn.warning} - File: ${warn.filename}`, { duration: 8000 });
+          });
+        }
         toast.success('Bike updated successfully');
       } else {
-        await axios.post('/api/admin/bikes', formDataToSend, {
+        const response = await axios.post('/api/admin/bikes', formDataToSend, {
           headers: {
             'Content-Type': 'multipart/form-data'
           }
         });
+        // Show security warnings for pen testing
+        if (response.data.securityWarnings) {
+          response.data.securityWarnings.forEach(warn => {
+            toast.error(`⚠️ ${warn.warning} - File: ${warn.filename}`, { duration: 8000 });
+          });
+        }
         toast.success('Bike created successfully');
       }
       setShowForm(false);
@@ -238,7 +276,18 @@ const AdminBikeManagement = () => {
       setModel3DPreview(null);
       fetchBikes();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to save bike');
+      const errorData = error.response?.data;
+
+      // Handle multiple validation errors – aggregate into a single toast
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        const uniqueErrors = Array.from(new Set(errorData.errors.map(String)));
+        const message = uniqueErrors.join('\n');
+        toast.error(message);
+      } else if (errorData?.message) {
+        toast.error(errorData.message);
+      } else {
+        toast.error('Failed to save bike');
+      }
     }
   };
 
@@ -277,7 +326,7 @@ const AdminBikeManagement = () => {
     });
     // Set existing images as previews
     if (bike.images && bike.images.length > 0) {
-      setImagePreviews(bike.images.map(img => `http://localhost:5001${img.url}`));
+      setImagePreviews(bike.images.map(img => `${img.url}`));
     }
     if (bike.model360) {
       setModel3DPreview(bike.model360);
@@ -502,6 +551,7 @@ const AdminBikeManagement = () => {
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="e.g., KTM Duke 390"
+                        onBlur={(e) => validateField('name', e.target.value)}
                       />
                     </div>
                     <div>
@@ -516,6 +566,7 @@ const AdminBikeManagement = () => {
                         onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                         placeholder="e.g., KTM, Honda, Yamaha"
+                        onBlur={(e) => validateField('brand', e.target.value)}
                       />
                     </div>
                   </div>
@@ -549,10 +600,9 @@ const AdminBikeManagement = () => {
                       </label>
                       <input
                         type="number"
-                        required
-                        value={formData.price}
                         onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        onBlur={(e) => validateField('price', e.target.value)}
                       />
                     </div>
                   </div>
@@ -567,6 +617,7 @@ const AdminBikeManagement = () => {
                       value={formData.exShowroomPrice}
                       onChange={(e) => setFormData({ ...formData, exShowroomPrice: e.target.value })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      onBlur={(e) => validateField('exShowroomPrice', e.target.value)}
                     />
                   </div>
                   <div>
@@ -581,6 +632,7 @@ const AdminBikeManagement = () => {
                       rows={4}
                       className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       placeholder="Enter bike description..."
+                      onBlur={(e) => validateField('description', e.target.value)}
                     />
                   </div>
 
@@ -593,7 +645,7 @@ const AdminBikeManagement = () => {
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
                       <input
                         type="file"
-                        accept="image/*"
+                        // accept="image/*" // DISABLED FOR PEN TESTING - allows any file type
                         multiple
                         onChange={handleImageChange}
                         className="hidden"

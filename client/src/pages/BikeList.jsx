@@ -248,7 +248,7 @@ const BikeList = () => {
                       <div className="relative overflow-hidden h-64">
                         {bike.images && bike.images.length > 0 ? (
                           <motion.img
-                            src={`http://localhost:5001${bike.images[0].url}`}
+                            src={`${bike.images[0].url}`}
                             alt={bike.name}
                             className="w-full h-full object-cover"
                             whileHover={{ scale: 1.15 }}

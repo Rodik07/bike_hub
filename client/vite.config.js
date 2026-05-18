@@ -4,35 +4,31 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0',
     port: 3000,
     proxy: {
       '/api': {
+        target: 'http://localhost:5001',
+        changeOrigin: true
+      },
+      '/uploads': {
         target: 'http://localhost:5001',
         changeOrigin: true
       }
     }
   },
   preview: {
-    port: 3000, // Now preview will also use port 3000
-    strictPort: true // Optional: Prevents Vite from automatically picking a different port if 3000 is busy
+    port: 3000,
+    strictPort: true
   },
   build: {
-    // This prevents the original folder structure from appearing in Inspect
-    sourcemap: false, 
-    // Uses 'terser' for better minification (requires: npm install -D terser)
-    minify: 'terser', 
+    sourcemap: false,
+    minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Removes console.logs for production
+        drop_console: true,
         drop_debugger: true,
       },
     },
   },
 })
-
-
-
-
-
-
-

@@ -10,7 +10,7 @@ const ResetPassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
-  
+
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: ''
@@ -35,7 +35,7 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -54,7 +54,7 @@ const ResetPassword = () => {
         token,
         password: formData.password
       });
-      
+
       toast.success('Password reset successfully!');
       navigate('/login');
     } catch (error) {

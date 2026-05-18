@@ -108,7 +108,7 @@ const DealerBikesModal = ({ isOpen, onClose, dealer }) => {
                     {item.bike?.images?.[0] && (
                       <Link to={`/bikes/${item.bike._id}`} onClick={onClose}>
                         <img
-                          src={`http://localhost:5001${item.bike.images[0].url}`}
+                          src={`${item.bike.images[0].url}`}
                           alt={item.bike.name}
                           className="w-full h-40 object-cover"
                         />

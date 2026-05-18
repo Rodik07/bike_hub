@@ -24,6 +24,7 @@ import {
   FaCog,
   FaChartBar,
   FaBullhorn,
+  FaCogs,
 } from 'react-icons/fa';
 
 const AdminDashboard = () => {
@@ -138,6 +139,17 @@ const AdminDashboard = () => {
           <h3 className="text-xl font-bold mb-2">Promotions</h3>
           <p className="text-gray-600">Manage promotional banners</p>
         </Link>
+
+        <Link
+          to="/admin/spare-parts"
+          className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition text-center transform hover:-translate-y-1"
+        >
+          <div className="flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4 mx-auto">
+            <FaCogs className="text-3xl text-primary-600" />
+          </div>
+          <h3 className="text-xl font-bold mb-2">Spare Parts</h3>
+          <p className="text-gray-600">Manage bike spare parts</p>
+        </Link>
       </div>
 
       {/* Charts */}
@@ -203,13 +215,12 @@ const AdminDashboard = () => {
                   </td>
                   <td className="px-4 py-2">
                     <span
-                      className={`px-2 py-1 rounded text-sm ${
-                        booking.status === 'approved'
+                      className={`px-2 py-1 rounded text-sm ${booking.status === 'approved'
                           ? 'bg-green-100 text-green-800'
                           : booking.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
                     >
                       {booking.status}
                     </span>

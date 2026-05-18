@@ -6,12 +6,12 @@
  * 2. Run: node create-admin.js [email] [password] [name]
  *
  * Examples:
- * node create-admin.js admin@bikehub.com admin123 "Admin User"
+ * node create-admin.js admin@bike_hub.com admin123 "Admin User"
  * node create-admin.js (will prompt for details)
  *
  * Or use MongoDB shell directly:
  * mongosh
- * use bikehub
+ * use bike_hub
  * db.users.updateOne(
  *   { email: "your-email@example.com" },
  *   { $set: { role: "admin" } }
@@ -28,7 +28,7 @@ dotenv.config({ path: "./server/.env" });
 const createAdmin = async () => {
   try {
     await mongoose.connect(
-      process.env.MONGODB_URI || "mongodb://localhost:27017/bikehub"
+      process.env.MONGODB_URI || "mongodb://localhost:27017/bike_hub"
     );
     console.log("✅ Connected to MongoDB\n");
 
@@ -40,7 +40,7 @@ const createAdmin = async () => {
       console.log("Usage: node create-admin.js <email> <password> [name]");
       console.log("\nExample:");
       console.log(
-        '  node create-admin.js admin@bikehub.com admin123 "Admin User"'
+        '  node create-admin.js admin@bike_hub.com admin123 "Admin User"'
       );
       process.exit(1);
     }

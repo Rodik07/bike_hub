@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { AuthContext } from '../context/AuthContext';
 import BikeView360 from '../components/BikeView360';
 import EMICalculator from '../components/EMICalculator';
@@ -22,9 +22,19 @@ import {
   FaTimes,
   FaCheckCircle,
   FaMotorcycle,
-  FaFire
+  FaFire,
+  FaCogs,
+  FaArrowRight,
+  FaChevronLeft,
+  FaChevronRight,
+  FaStar,
+  FaRegStar,
+  FaThumbsUp,
+  FaCommentDots,
+  FaEdit
 } from 'react-icons/fa';
 import { fadeInUp, scaleIn, staggerContainer } from '../utils/animations';
+import PromotionBanner from '../components/PromotionBanner';
 
 const BikeDetail = () => {
   const { id } = useParams();
@@ -38,11 +48,53 @@ const BikeDetail = () => {
   const [compareList, setCompareList] = useState(
     JSON.parse(localStorage.getItem('compareList') || '[]')
   );
+  const [spareParts, setSpareParts] = useState([]);
+  const [showSpareParts, setShowSpareParts] = useState(false);
+
+  // Review preview state
+  const [previewReview, setPreviewReview] = useState(null);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [avgRating, setAvgRating] = useState(0);
+  const [reviewKey, setReviewKey] = useState(0);
 
   useEffect(() => {
     console.log('🔄 [BikeDetail] Component mounted/updated, ID:', id);
     fetchBike();
   }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      axios.get(`/api/spare-parts/${id}?limit=10`)
+        .then(({ data }) => setSpareParts(data.parts || []))
+        .catch(() => { });
+    }
+  }, [id]);
+
+  // Fetch random review preview
+  const fetchReviewPreview = useCallback(() => {
+    if (id) {
+      axios.get(`/api/reviews/${id}/preview`)
+        .then(({ data }) => {
+          setPreviewReview(data.review);
+          setTotalReviews(data.totalReviews);
+          setAvgRating(data.avgRating);
+          setReviewKey(prev => prev + 1);
+        })
+        .catch(() => { });
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchReviewPreview();
+  }, [fetchReviewPreview]);
+
+  // Auto-cycle review every 5 seconds
+  useEffect(() => {
+    if (totalReviews > 1) {
+      const interval = setInterval(fetchReviewPreview, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [totalReviews, fetchReviewPreview]);
 
   const fetchBike = async () => {
     console.log('🔍 [BikeDetail] Starting to fetch bike with ID:', id);
@@ -164,6 +216,9 @@ const BikeDetail = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       <div className="container mx-auto px-4 py-8" ref={containerRef}>
+        {/* Promotion Ad Popup */}
+        <PromotionBanner />
+
         {/* Main Bike Info Section - Always visible */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Animated Images */}
@@ -194,7 +249,7 @@ const BikeDetail = () => {
                         className="mb-4 rounded-2xl overflow-hidden shadow-2xl border-2 border-primary-500/20"
                       >
                         <motion.img
-                          src={`http://localhost:5001${bike.images[0].url}`}
+                          src={`${bike.images[0].url}`}
                           alt={bike.name}
                           className="w-full h-96 object-cover"
                           whileHover={{ scale: 1.1 }}
@@ -210,7 +265,7 @@ const BikeDetail = () => {
                               whileTap={{ scale: 0.95 }}
                             >
                               <img
-                                src={`http://localhost:5001${img.url}`}
+                                src={`${img.url}`}
                                 alt={bike.name}
                                 className="w-full h-24 object-cover rounded-xl cursor-pointer shadow-lg border-2 border-transparent hover:border-primary-500 transition-all"
                               />
@@ -336,6 +391,7 @@ const BikeDetail = () => {
           </motion.div>
         </div>
 
+
         {/* Exhaust Sound Player */}
         {bike.exhaustSound && (
           <motion.div
@@ -376,6 +432,135 @@ const BikeDetail = () => {
             </motion.div>
           );
         })()}
+
+        {/* View Spare Parts Section — Horizontal Scroll */}
+        {spareParts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="mt-8"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
+                  <FaCogs className="text-primary-600 text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Spare Parts</h2>
+                  <p className="text-gray-500 text-sm">{spareParts.length} parts available</p>
+                </div>
+              </div>
+              {/* Scroll arrows */}
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('spare-parts-scroll');
+                    if (el) el.scrollBy({ left: -300, behavior: 'smooth' });
+                  }}
+                  className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <FaChevronLeft className="text-sm text-gray-600" />
+                </button>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById('spare-parts-scroll');
+                    if (el) el.scrollBy({ left: 300, behavior: 'smooth' });
+                  }}
+                  className="w-9 h-9 bg-white border border-gray-200 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors shadow-sm"
+                >
+                  <FaChevronRight className="text-sm text-gray-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* Horizontal scroll container */}
+            <div
+              id="spare-parts-scroll"
+              className="flex space-x-4 overflow-x-auto pb-4 scrollbar-hide"
+              style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {spareParts.slice(0, 8).map((part, index) => (
+                <motion.div
+                  key={part._id}
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.08 }}
+                  style={{ scrollSnapAlign: 'start' }}
+                  className="flex-shrink-0 w-[calc(33.333%-12px)] min-w-[220px]"
+                >
+                  <Link
+                    to={`/spare-parts/${part._id}`}
+                    className="block bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all border border-gray-100 group hover:-translate-y-1"
+                  >
+                    {part.image ? (
+                      <div className="overflow-hidden">
+                        <img
+                          src={part.image}
+                          alt={part.name}
+                          className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-full h-36 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                        <FaCogs className="text-3xl text-gray-200" />
+                      </div>
+                    )}
+                    <div className="p-3">
+                      <h4 className="font-bold text-sm mb-1 line-clamp-1 group-hover:text-primary-600 transition-colors">{part.name}</h4>
+                      <span className="inline-block bg-primary-100 text-primary-700 text-[10px] font-bold px-2 py-0.5 rounded-full mb-2">
+                        {part.category}
+                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-primary-600 font-bold text-sm">रु{part.price.toLocaleString()}</span>
+                        <span className="text-green-600 text-[10px] font-medium flex items-center gap-1">
+                          <FaCheckCircle className="text-[8px]" /> In Stock
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+
+              {/* View More card */}
+              {spareParts.length > 8 && (
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.7 }}
+                  style={{ scrollSnapAlign: 'start' }}
+                  className="flex-shrink-0 w-[calc(33.333%-12px)] min-w-[220px]"
+                >
+                  <Link
+                    to={`/bikes/${id}/spare-parts`}
+                    className="block bg-gradient-to-br from-primary-50 to-primary-100 rounded-xl border-2 border-primary-200 border-dashed h-full min-h-[230px] flex items-center justify-center hover:from-primary-100 hover:to-primary-200 transition-all group"
+                  >
+                    <div className="text-center p-4">
+                      <div className="w-14 h-14 bg-primary-200 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-primary-300 transition-colors">
+                        <FaArrowRight className="text-primary-700 text-xl" />
+                      </div>
+                      <p className="text-primary-700 font-bold">View All Parts</p>
+                      <p className="text-primary-500 text-sm">{spareParts.length - 8}+ more</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              )}
+            </div>
+
+            {/* View all link */}
+            <div className="text-center mt-4">
+              <Link
+                to={`/bikes/${id}/spare-parts`}
+                className="inline-flex items-center space-x-2 text-primary-600 hover:text-primary-700 font-semibold transition-colors group"
+              >
+                <span>View All Spare Parts</span>
+                <FaArrowRight className="text-sm group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </motion.div>
+        )}
 
         {/* Animated Specifications */}
         {(() => {
@@ -514,6 +699,125 @@ const BikeDetail = () => {
             </motion.div>
           );
         })()}
+
+        {/* ===== REVIEW PREVIEW SECTION ===== */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="mt-8 bg-gradient-to-br from-white to-gray-50 rounded-2xl p-8 shadow-2xl border-2 border-primary-500/20"
+        >
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+                <FaStar className="text-white text-lg" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Reviews</h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {totalReviews > 0 ? (
+                    <>
+                      <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <span key={s}>
+                            {s <= Math.round(avgRating)
+                              ? <FaStar className="text-yellow-400 text-sm" />
+                              : <FaRegStar className="text-gray-300 text-sm" />}
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-sm font-semibold text-gray-600">{avgRating}</span>
+                      <span className="text-sm text-gray-400">({totalReviews} {totalReviews === 1 ? 'review' : 'reviews'})</span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-gray-400">No reviews yet</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Link
+              to={`/bikes/${id}/reviews`}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-600 to-accent-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:from-primary-700 hover:to-accent-600 transition-all shadow-md hover:shadow-lg group"
+            >
+              <span>{totalReviews > 0 ? 'See All Reviews' : 'Write a Review'}</span>
+              <FaArrowRight className="text-xs group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
+          {/* Preview card — one random review */}
+          {previewReview ? (
+            <Link to={`/bikes/${id}/reviews`} className="block">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={reviewKey}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  transition={{ duration: 0.4 }}
+                  className="bg-gradient-to-r from-primary-50/60 to-accent-50/40 rounded-xl p-5 border border-primary-200 hover:border-primary-400 hover:shadow-lg transition-all cursor-pointer group"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-lg shadow-md flex-shrink-0">
+                      {previewReview.user?.name?.charAt(0)?.toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-gray-800">{previewReview.user?.name}</span>
+                        <div className="flex">
+                          {[1, 2, 3, 4, 5].map(s => (
+                            <span key={s}>
+                              {s <= previewReview.rating
+                                ? <FaStar className="text-yellow-400 text-xs" />
+                                : <FaRegStar className="text-gray-300 text-xs" />}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <h4 className="font-semibold text-gray-700 mt-1">{previewReview.title}</h4>
+                      <p className="text-gray-600 text-sm mt-1 line-clamp-2">{previewReview.content}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1"><FaThumbsUp /> {previewReview.likes?.length || 0}</span>
+                        <span className="flex items-center gap-1"><FaCommentDots /> {previewReview.comments?.length || 0}</span>
+                      </div>
+                    </div>
+                    <FaArrowRight className="text-gray-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all mt-3 flex-shrink-0" />
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </Link>
+          ) : (
+            <div className="text-center py-8">
+              <FaCommentDots className="text-4xl text-gray-200 mx-auto mb-3" />
+              <p className="text-gray-400 font-medium">No reviews yet. Be the first!</p>
+              {user && (
+                <Link
+                  to={`/bikes/${id}/reviews`}
+                  className="inline-flex items-center gap-2 mt-3 text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+                >
+                  <FaEdit /> Write a Review
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Dots indicator for cycling */}
+          {totalReviews > 1 && (
+            <div className="flex justify-center gap-1.5 mt-4">
+              {Array.from({ length: Math.min(totalReviews, 5) }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                    i === (reviewKey - 1) % Math.min(totalReviews, 5)
+                      ? 'bg-primary-500 scale-125'
+                      : 'bg-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </motion.div>
       </div>
 
       {/* Test Ride Booking Modal */}

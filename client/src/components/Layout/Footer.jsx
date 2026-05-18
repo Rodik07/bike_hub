@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { 
-  FaMotorcycle, 
-  FaBicycle, 
-  FaBalanceScale, 
+import {
+  FaMotorcycle,
+  FaBicycle,
+  FaBalanceScale,
   FaMapMarkerAlt,
   FaQuestionCircle,
   FaEnvelope,
@@ -88,7 +88,7 @@ const Footer = () => {
         <div className="border-t border-gray-700 mt-10 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-gray-400 text-sm">
-              &copy; 2024 BikeHub. All rights reserved.
+              &copy; 2026 BikeHub. All rights reserved.
             </p>
             <div className="flex items-center space-x-2 text-gray-400 text-sm">
               <FaMapMarkerAlt />
